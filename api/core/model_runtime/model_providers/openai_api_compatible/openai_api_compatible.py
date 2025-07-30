@@ -13,24 +13,15 @@ DEPRECATED: This provider is deprecated. Please migrate to:
 
 import logging
 import warnings
-from typing import Optional
 
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (
-    ConfigurateMethod,
-    FormType,
-    ProviderEntity,
-    ProviderQuotaType,
-    QuotaUnit,
-    SystemConfigurationStatus,
-)
+from core.model_runtime.entities.provider_entities import ConfigurateMethod
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.__base.model_provider import ModelProvider
 
 logger = logging.getLogger(__name__)
 
 
-class OpenAICompatibleProvider(ModelProvider):
+class OpenAICompatibleProvider:
     """
     OpenAI API Compatible Provider - Legacy Compatibility Layer
     
@@ -38,132 +29,131 @@ class OpenAICompatibleProvider(ModelProvider):
     Please migrate to openai_api_chat or openai_api_completion providers.
     """
 
-    def get_provider_schema(self) -> ProviderEntity:
+    def __init__(self):
+        self.provider_name = "openai_api_compatible"
+        self.supported_model_types = [ModelType.LLM]
+        self.configurate_methods = [ConfigurateMethod.CUSTOMIZABLE_MODEL]
+
+    def get_provider_schema(self) -> dict:
         """
         Returns the provider schema with deprecation warning
         """
-        return ProviderEntity(
-            provider="openai_api_compatible",
-            label=ProviderEntity.ProviderLabelEntity(
-                en_US="OpenAI API Compatible (Deprecated)",
-                zh_Hans="OpenAI API 兼容 (已弃用)"
-            ),
-            description=ProviderEntity.ProviderDescriptionEntity(
-                en_US="DEPRECATED: Please use openai_api_chat or openai_api_completion instead. "
-                      "Generic provider for OpenAI-compatible APIs supporting both chat and completion endpoints.",
-                zh_Hans="已弃用：请使用 openai_api_chat 或 openai_api_completion。"
-                        "支持聊天和补全端点的通用 OpenAI 兼容 API 提供商。"
-            ),
-            background="#1C3A32",
-            icon_small=ProviderEntity.ProviderIconEntity(
-                en_US=self.get_icon(),
-                zh_Hans=self.get_icon()
-            ),
-            icon_large=ProviderEntity.ProviderIconEntity(
-                en_US=self.get_icon(),
-                zh_Hans=self.get_icon()
-            ),
-            supported_model_types=[ModelType.LLM],
-            configurate_methods=[ConfigurateMethod.CUSTOMIZABLE_MODEL],
-            provider_credential_schema=ProviderEntity.ProviderCredentialSchema(
-                credential_form_schemas=[
-                    ProviderEntity.CredentialFormSchema(
-                        variable="api_key",
-                        label=ProviderEntity.CredentialFormSchema.CredentialFormSchemaLabel(
-                            en_US="API Key",
-                            zh_Hans="API Key"
-                        ),
-                        type=FormType.SECRET_INPUT,
-                        required=True,
-                        placeholder=ProviderEntity.CredentialFormSchema.CredentialFormSchemaPlaceholder(
-                            en_US="Enter your API Key",
-                            zh_Hans="输入你的 API Key"
-                        )
-                    ),
-                    ProviderEntity.CredentialFormSchema(
-                        variable="api_base",
-                        label=ProviderEntity.CredentialFormSchema.CredentialFormSchemaLabel(
-                            en_US="API Base",
-                            zh_Hans="API Base"
-                        ),
-                        type=FormType.TEXT_INPUT,
-                        required=True,
-                        placeholder=ProviderEntity.CredentialFormSchema.CredentialFormSchemaPlaceholder(
-                            en_US="Enter your API Base URL",
-                            zh_Hans="输入你的 API Base URL"
-                        )
-                    ),
-                    ProviderEntity.CredentialFormSchema(
-                        variable="mode",
-                        label=ProviderEntity.CredentialFormSchema.CredentialFormSchemaLabel(
-                            en_US="Completion Mode (DEPRECATED - use dedicated providers instead)",
-                            zh_Hans="补全模式 (已弃用 - 请使用专用提供商)"
-                        ),
-                        type=FormType.SELECT,
-                        required=False,
-                        default="chat",
-                        options=[
-                            ProviderEntity.CredentialFormSchema.CredentialFormSchemaOption(
-                                label=ProviderEntity.CredentialFormSchema.CredentialFormSchemaLabel(
-                                    en_US="Chat Completions (/chat/completions) - Use openai_api_chat instead",
-                                    zh_Hans="聊天补全 (/chat/completions) - 请使用 openai_api_chat"
-                                ),
-                                value="chat"
-                            ),
-                            ProviderEntity.CredentialFormSchema.CredentialFormSchemaOption(
-                                label=ProviderEntity.CredentialFormSchema.CredentialFormSchemaLabel(
-                                    en_US="Text Completions (/completions) - Use openai_api_completion instead",
-                                    zh_Hans="文本补全 (/completions) - 请使用 openai_api_completion"
-                                ),
-                                value="completion"
-                            )
+        return {
+            "provider": "openai_api_compatible",
+            "label": {
+                "en_US": "OpenAI API Compatible (Deprecated)",
+                "zh_Hans": "OpenAI API 兼容 (已弃用)"
+            },
+            "description": {
+                "en_US": "DEPRECATED: Please use openai_api_chat or openai_api_completion instead. "
+                         "Generic provider for OpenAI-compatible APIs supporting both chat and completion endpoints.",
+                "zh_Hans": "已弃用：请使用 openai_api_chat 或 openai_api_completion。"
+                          "支持聊天和补全端点的通用 OpenAI 兼容 API 提供商。"
+            },
+            "icon_small": {"en_US": "icon_s_en.svg"},
+            "icon_large": {"en_US": "icon_l_en.svg"},
+            "background": "#1C3A32",
+            "supported_model_types": [ModelType.LLM],
+            "configurate_methods": [ConfigurateMethod.CUSTOMIZABLE_MODEL],
+            "provider_credential_schema": {
+                "credential_form_schemas": [
+                    {
+                        "variable": "api_key",
+                        "label": {
+                            "en_US": "API Key",
+                            "zh_Hans": "API Key"
+                        },
+                        "type": "secret-input",
+                        "required": True,
+                        "placeholder": {
+                            "en_US": "Enter your API Key",
+                            "zh_Hans": "输入你的 API Key"
+                        }
+                    },
+                    {
+                        "variable": "api_base",
+                        "label": {
+                            "en_US": "API Base",
+                            "zh_Hans": "API Base"
+                        },
+                        "type": "text-input",
+                        "required": True,
+                        "placeholder": {
+                            "en_US": "Enter your API Base URL",
+                            "zh_Hans": "输入你的 API Base URL"
+                        }
+                    },
+                    {
+                        "variable": "mode",
+                        "label": {
+                            "en_US": "Completion Mode (DEPRECATED - use dedicated providers instead)",
+                            "zh_Hans": "补全模式 (已弃用 - 请使用专用提供商)"
+                        },
+                        "type": "select",
+                        "required": False,
+                        "default": "chat",
+                        "options": [
+                            {
+                                "label": {
+                                    "en_US": "Chat Completions (/chat/completions) - Use openai_api_chat instead",
+                                    "zh_Hans": "聊天补全 (/chat/completions) - 请使用 openai_api_chat"
+                                },
+                                "value": "chat"
+                            },
+                            {
+                                "label": {
+                                    "en_US": "Text Completions (/completions) - Use openai_api_completion instead",
+                                    "zh_Hans": "文本补全 (/completions) - 请使用 openai_api_completion"
+                                },
+                                "value": "completion"
+                            }
                         ]
-                    )
+                    }
                 ]
-            ),
-            model_credential_schema=ProviderEntity.ModelCredentialSchema(
-                model={
-                    "label": ProviderEntity.ModelCredentialSchema.ModelCredentialSchemaLabel(
-                        en_US="Model Name",
-                        zh_Hans="模型名称"
-                    ),
-                    "placeholder": ProviderEntity.ModelCredentialSchema.ModelCredentialSchemaPlaceholder(
-                        en_US="Enter your model name",
-                        zh_Hans="输入模型名称"
-                    )
+            },
+            "model_credential_schema": {
+                "model": {
+                    "label": {
+                        "en_US": "Model Name",
+                        "zh_Hans": "模型名称"
+                    },
+                    "placeholder": {
+                        "en_US": "Enter your model name",
+                        "zh_Hans": "输入模型名称"
+                    }
                 },
-                credential_form_schemas=[
-                    ProviderEntity.CredentialFormSchema(
-                        variable="context_size",
-                        label=ProviderEntity.CredentialFormSchema.CredentialFormSchemaLabel(
-                            en_US="Context Size",
-                            zh_Hans="上下文长度"
-                        ),
-                        type=FormType.TEXT_INPUT,
-                        required=True,
-                        default="4096",
-                        placeholder=ProviderEntity.CredentialFormSchema.CredentialFormSchemaPlaceholder(
-                            en_US="Enter context size",
-                            zh_Hans="请输入上下文长度"
-                        )
-                    ),
-                    ProviderEntity.CredentialFormSchema(
-                        variable="max_tokens",
-                        label=ProviderEntity.CredentialFormSchema.CredentialFormSchemaLabel(
-                            en_US="Max Tokens",
-                            zh_Hans="最大 token 数"
-                        ),
-                        type=FormType.TEXT_INPUT,
-                        required=True,
-                        default="512",
-                        placeholder=ProviderEntity.CredentialFormSchema.CredentialFormSchemaPlaceholder(
-                            en_US="Enter max tokens",
-                            zh_Hans="请输入最大 token 数"
-                        )
-                    )
+                "credential_form_schemas": [
+                    {
+                        "variable": "context_size",
+                        "label": {
+                            "en_US": "Context Size",
+                            "zh_Hans": "上下文长度"
+                        },
+                        "type": "text-input",
+                        "required": True,
+                        "default": "4096",
+                        "placeholder": {
+                            "en_US": "Enter context size",
+                            "zh_Hans": "请输入上下文长度"
+                        }
+                    },
+                    {
+                        "variable": "max_tokens",
+                        "label": {
+                            "en_US": "Max Tokens",
+                            "zh_Hans": "最大 token 数"
+                        },
+                        "type": "text-input",
+                        "required": True,
+                        "default": "512",
+                        "placeholder": {
+                            "en_US": "Enter max tokens",
+                            "zh_Hans": "请输入最大 token 数"
+                        }
+                    }
                 ]
-            )
-        )
+            }
+        }
 
     def validate_provider_credentials(self, credentials: dict) -> None:
         """
@@ -248,7 +238,3 @@ class OpenAICompatibleProvider(ModelProvider):
         
         # Return empty list for deprecated provider
         return []
-
-    @staticmethod
-    def get_icon() -> str:
-        return "icon_data_here"  # Placeholder for icon
