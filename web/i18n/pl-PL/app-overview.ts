@@ -38,16 +38,28 @@ const translation = {
       preview: 'Podgląd',
       regenerate: 'Wygeneruj ponownie',
       regenerateNotice: 'Czy chcesz wygenerować ponownie publiczny adres URL?',
-      preUseReminder: 'Przed kontynuowaniem włącz aplikację WebApp.',
+      preUseReminder: 'Przed kontynuowaniem włącz aplikację web app.',
       settings: {
         entry: 'Ustawienia',
-        title: 'Ustawienia WebApp',
-        webName: 'Nazwa WebApp',
-        webDesc: 'Opis WebApp',
+        title: 'Ustawienia web app',
+        webName: 'Nazwa web app',
+        webDesc: 'Opis web app',
         webDescTip:
           'Ten tekst będzie wyświetlany po stronie klienta, zapewniając podstawowe wskazówki, jak korzystać z aplikacji',
-        webDescPlaceholder: 'Wpisz opis WebApp',
+        webDescPlaceholder: 'Wpisz opis web app',
         language: 'Język',
+        workflow: {
+          title: 'Kroki przepływu pracy',
+          show: 'Pokaż',
+          hide: 'Ukryj',
+          subTitle: 'Szczegóły przepływu pracy',
+          showDesc: 'Pokazywanie lub ukrywanie szczegółów przepływu pracy w aplikacji internetowej',
+        },
+        chatColorTheme: 'Motyw kolorystyczny czatu',
+        chatColorThemeDesc: 'Ustaw motyw kolorystyczny czatu',
+        chatColorThemeInverted: 'Odwrócony',
+        invalidHexMessage: 'Nieprawidłowa wartość heksadecymalna',
+        invalidPrivacyPolicy: 'Nieprawidłowy link do polityki prywatności. Proszę użyć prawidłowego linku zaczynającego się od http lub https',
         more: {
           entry: 'Pokaż więcej ustawień',
           copyright: 'Prawa autorskie',
@@ -59,7 +71,16 @@ const translation = {
           customDisclaimer: 'Oświadczenie o ochronie danych',
           customDisclaimerPlaceholder: 'Wprowadź oświadczenie o ochronie danych',
           customDisclaimerTip: 'Niestandardowy tekst oświadczenia będzie wyświetlany po stronie klienta, dostarczając dodatkowych informacji o aplikacji.',
+          copyrightTip: 'Wyświetlanie informacji o prawach autorskich w aplikacji internetowej',
+          copyrightTooltip: 'Uaktualnij do planu Professional lub wyższego',
         },
+        sso: {
+          tooltip: 'Skontaktuj się z administratorem, aby włączyć logowanie jednokrotne w aplikacji internetowej',
+          title: 'Logowanie jednokrotne w aplikacji internetowej',
+          label: 'Uwierzytelnianie logowania jednokrotnego',
+          description: 'Wszyscy użytkownicy muszą zalogować się za pomocą logowania jednokrotnego przed użyciem aplikacji internetowej',
+        },
+        modalTip: 'Ustawienia aplikacji internetowej po stronie klienta.',
       },
       embedded: {
         entry: 'Osadzone',
@@ -103,6 +124,7 @@ const translation = {
           operation: 'Dokumentacja',
         },
       },
+      launch: 'Uruchomić',
     },
     apiInfo: {
       title: 'API usługi w tle',
@@ -121,8 +143,11 @@ const translation = {
     tokenPS: 'Tokeny/s',
     totalMessages: {
       title: 'Łączna liczba wiadomości',
-      explanation:
-        'Dzienna liczba interakcji z AI; inżynieria i debugowanie monitów wykluczone.',
+      explanation: 'Liczba dziennych interakcji z AI.',
+    },
+    totalConversations: {
+      title: 'Całkowita liczba rozmów',
+      explanation: 'Liczba dziennych rozmów z AI; inżynieria/debugowanie promptów wykluczone.',
     },
     activeUsers: {
       title: 'Aktywni użytkownicy',

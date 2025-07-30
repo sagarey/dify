@@ -1,22 +1,24 @@
 import hashlib
+import os
+from typing import Union
 
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
-import libs.gmpy2_pkcs10aep_cipher as gmpy2_pkcs10aep_cipher
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from libs import gmpy2_pkcs10aep_cipher
 
 
-def generate_key_pair(tenant_id):
+def generate_key_pair(tenant_id: str) -> str:
     private_key = RSA.generate(2048)
     public_key = private_key.publickey()
 
     pem_private = private_key.export_key()
     pem_public = public_key.export_key()
 
-    filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
+    filepath = os.path.join("privkeys", tenant_id, "private.pem")
 
     storage.save(filepath, pem_private)
 
@@ -26,7 +28,7 @@ def generate_key_pair(tenant_id):
 prefix_hybrid = b"HYBRID:"
 
 
-def encrypt(text, public_key):
+def encrypt(text: str, public_key: Union[str, bytes]) -> bytes:
     if isinstance(public_key, str):
         public_key = public_key.encode()
 
@@ -38,23 +40,23 @@ def encrypt(text, public_key):
     rsa_key = RSA.import_key(public_key)
     cipher_rsa = gmpy2_pkcs10aep_cipher.new(rsa_key)
 
-    enc_aes_key = cipher_rsa.encrypt(aes_key)
+    enc_aes_key: bytes = cipher_rsa.encrypt(aes_key)
 
     encrypted_data = enc_aes_key + cipher_aes.nonce + tag + ciphertext
 
     return prefix_hybrid + encrypted_data
 
 
-def get_decrypt_decoding(tenant_id):
-    filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
+def get_decrypt_decoding(tenant_id: str) -> tuple[RSA.RsaKey, object]:
+    filepath = os.path.join("privkeys", tenant_id, "private.pem")
 
-    cache_key = 'tenant_privkey:{hash}'.format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
+    cache_key = f"tenant_privkey:{hashlib.sha3_256(filepath.encode()).hexdigest()}"
     private_key = redis_client.get(cache_key)
     if not private_key:
         try:
             private_key = storage.load(filepath)
         except FileNotFoundError:
-            raise PrivkeyNotFoundError("Private key not found, tenant_id: {tenant_id}".format(tenant_id=tenant_id))
+            raise PrivkeyNotFoundError(f"Private key not found, tenant_id: {tenant_id}")
 
         redis_client.setex(cache_key, 120, private_key)
 
@@ -64,14 +66,14 @@ def get_decrypt_decoding(tenant_id):
     return rsa_key, cipher_rsa
 
 
-def decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa):
+def decrypt_token_with_decoding(encrypted_text: bytes, rsa_key: RSA.RsaKey, cipher_rsa) -> str:
     if encrypted_text.startswith(prefix_hybrid):
-        encrypted_text = encrypted_text[len(prefix_hybrid):]
+        encrypted_text = encrypted_text[len(prefix_hybrid) :]
 
-        enc_aes_key = encrypted_text[:rsa_key.size_in_bytes()]
-        nonce = encrypted_text[rsa_key.size_in_bytes():rsa_key.size_in_bytes() + 16]
-        tag = encrypted_text[rsa_key.size_in_bytes() + 16:rsa_key.size_in_bytes() + 32]
-        ciphertext = encrypted_text[rsa_key.size_in_bytes() + 32:]
+        enc_aes_key = encrypted_text[: rsa_key.size_in_bytes()]
+        nonce = encrypted_text[rsa_key.size_in_bytes() : rsa_key.size_in_bytes() + 16]
+        tag = encrypted_text[rsa_key.size_in_bytes() + 16 : rsa_key.size_in_bytes() + 32]
+        ciphertext = encrypted_text[rsa_key.size_in_bytes() + 32 :]
 
         aes_key = cipher_rsa.decrypt(enc_aes_key)
 
@@ -83,10 +85,10 @@ def decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa):
     return decrypted_text.decode()
 
 
-def decrypt(encrypted_text, tenant_id):
+def decrypt(encrypted_text: bytes, tenant_id: str) -> str:
     rsa_key, cipher_rsa = get_decrypt_decoding(tenant_id)
 
-    return decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa)
+    return decrypt_token_with_decoding(encrypted_text=encrypted_text, rsa_key=rsa_key, cipher_rsa=cipher_rsa)
 
 
 class PrivkeyNotFoundError(Exception):

@@ -1,11 +1,13 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { t } from 'i18next'
+import {
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import type { CodeDependency } from './types'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { Check, SearchLg } from '@/app/components/base/icons/src/vender/line/general'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import Input from '@/app/components/base/input'
+import { Check } from '@/app/components/base/icons/src/vender/line/general'
 
 type Props = {
   value: CodeDependency
@@ -35,39 +37,28 @@ const DependencyPicker: FC<Props> = ({
       placement='bottom-start'
       offset={4}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className='flex-grow cursor-pointer'>
-        <div className='flex items-center h-8 justify-between px-2.5 rounded-lg border-0 bg-gray-100 text-gray-900 text-[13px]'>
-          <div className='grow w-0 truncate' title={value.name}>{value.name}</div>
-          <ChevronDown className='shrink-0 w-3.5 h-3.5 text-gray-700' />
+      <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className='grow cursor-pointer'>
+        <div className='flex h-8 items-center justify-between rounded-lg border-0 bg-gray-100 px-2.5 text-[13px] text-gray-900'>
+          <div className='w-0 grow truncate' title={value.name}>{value.name}</div>
+          <RiArrowDownSLine className='h-3.5 w-3.5 shrink-0 text-gray-700' />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{
         zIndex: 100,
       }}>
-        <div className='p-1 bg-white rounded-lg shadow-sm' style={{
+        <div className='rounded-lg bg-white p-1 shadow-sm' style={{
           width: 350,
         }}>
-          <div
-            className='shadow-sm bg-white mb-2 mx-1 flex items-center px-2 rounded-lg bg-gray-100'
-          >
-            <SearchLg className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
-            <input
+          <div className='mx-1 mb-2'>
+            <Input
+              showLeftIcon
+              showClearIcon
               value={searchText}
-              className='grow px-0.5 py-[7px] text-[13px] text-gray-700 bg-transparent appearance-none outline-none caret-primary-600 placeholder:text-gray-400'
               placeholder={t('workflow.nodes.code.searchDependencies') || ''}
               onChange={e => setSearchText(e.target.value)}
+              onClear={() => setSearchText('')}
               autoFocus
             />
-            {
-              searchText && (
-                <div
-                  className='flex items-center justify-center ml-[5px] w-[18px] h-[18px] cursor-pointer'
-                  onClick={() => setSearchText('')}
-                >
-                  <XCircle className='w-[14px] h-[14px] text-gray-400' />
-                </div>
-              )
-            }
           </div>
           <div className='max-h-[30vh] overflow-y-auto'>
             {available_dependencies.filter((v) => {
@@ -77,11 +68,11 @@ const DependencyPicker: FC<Props> = ({
             }).map(dependency => (
               <div
                 key={dependency.name}
-                className='flex items-center h-[30px] justify-between pl-3 pr-2 rounded-lg hover:bg-gray-100 text-gray-900 text-[13px] cursor-pointer'
+                className='flex h-[30px] cursor-pointer items-center justify-between rounded-lg pl-3 pr-2 text-[13px] text-gray-900 hover:bg-gray-100'
                 onClick={handleChange(dependency)}
               >
                 <div className='w-0 grow truncate'>{dependency.name}</div>
-                {dependency.name === value.name && <Check className='shrink-0 w-4 h-4 text-primary-600' />}
+                {dependency.name === value.name && <Check className='h-4 w-4 shrink-0 text-primary-600' />}
               </div>
             ))}
           </div>

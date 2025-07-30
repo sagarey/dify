@@ -41,8 +41,19 @@ export const BLOCKS: Block[] = [
   },
   {
     classification: BlockClassificationEnum.Logic,
+    type: BlockEnum.LoopEnd,
+    title: 'Exit Loop',
+    description: '',
+  },
+  {
+    classification: BlockClassificationEnum.Logic,
     type: BlockEnum.Iteration,
     title: 'Iteration',
+  },
+  {
+    classification: BlockClassificationEnum.Logic,
+    type: BlockEnum.Loop,
+    title: 'Loop',
   },
   {
     classification: BlockClassificationEnum.Transform,
@@ -61,6 +72,16 @@ export const BLOCKS: Block[] = [
   },
   {
     classification: BlockClassificationEnum.Transform,
+    type: BlockEnum.DocExtractor,
+    title: 'Doc Extractor',
+  },
+  {
+    classification: BlockClassificationEnum.Transform,
+    type: BlockEnum.Assigner,
+    title: 'Variable Assigner',
+  },
+  {
+    classification: BlockClassificationEnum.Transform,
     type: BlockEnum.ParameterExtractor,
     title: 'Parameter Extractor',
   },
@@ -68,6 +89,16 @@ export const BLOCKS: Block[] = [
     classification: BlockClassificationEnum.Utilities,
     type: BlockEnum.HttpRequest,
     title: 'HTTP Request',
+  },
+  {
+    classification: BlockClassificationEnum.Utilities,
+    type: BlockEnum.ListFilter,
+    title: 'List Filter',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
+    type: BlockEnum.Agent,
+    title: 'Agent',
   },
 ]
 

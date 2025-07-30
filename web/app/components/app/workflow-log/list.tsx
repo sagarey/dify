@@ -2,8 +2,6 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
-import s from './style.module.css'
 import DetailPanel from './detail'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse } from '@/models/log'
 import type { App } from '@/types/app'
@@ -12,6 +10,7 @@ import Drawer from '@/app/components/base/drawer'
 import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
+import cn from '@/utils/classnames'
 
 type ILogs = {
   logs?: WorkflowLogsResponse
@@ -34,33 +33,41 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const statusTdRender = (status: string) => {
     if (status === 'succeeded') {
       return (
-        <div className='inline-flex items-center gap-1'>
+        <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
           <Indicator color={'green'} />
-          <span>Success</span>
+          <span className='text-util-colors-green-green-600'>Success</span>
         </div>
       )
     }
     if (status === 'failed') {
       return (
-        <div className='inline-flex items-center gap-1'>
+        <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
           <Indicator color={'red'} />
-          <span className='text-red-600'>Fail</span>
+          <span className='text-util-colors-red-red-600'>Fail</span>
         </div>
       )
     }
     if (status === 'stopped') {
       return (
-        <div className='inline-flex items-center gap-1'>
+        <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
           <Indicator color={'yellow'} />
-          <span>Stop</span>
+          <span className='text-util-colors-warning-warning-600'>Stop</span>
         </div>
       )
     }
     if (status === 'running') {
       return (
-        <div className='inline-flex items-center gap-1'>
+        <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
           <Indicator color={'blue'} />
-          <span className='text-primary-600'>Running</span>
+          <span className='text-util-colors-blue-light-blue-light-600'>Running</span>
+        </div>
+      )
+    }
+    if (status === 'partial-succeeded') {
+      return (
+        <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
+          <Indicator color={'green'} />
+          <span className='text-util-colors-green-green-600'>Partial Success</span>
         </div>
       )
     }
@@ -77,43 +84,47 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
 
   return (
     <div className='overflow-x-auto'>
-      <table className={`w-full min-w-[440px] border-collapse border-0 text-sm mt-3 ${s.logTable}`}>
-        <thead className="h-8 !pl-3 py-2 leading-[18px] border-b border-gray-200 text-xs text-gray-500 font-medium">
+      <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
+        <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
-            <td className='w-[1.375rem] whitespace-nowrap'></td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.startTime')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.status')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.runtime')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.tokens')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.user')}</td>
-            {/* <td className='whitespace-nowrap'>{t('appLog.table.header.version')}</td> */}
+            <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.startTime')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.status')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.runtime')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.tokens')}</td>
+            <td className='whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.user')}</td>
           </tr>
         </thead>
-        <tbody className="text-gray-700 text-[13px]">
+        <tbody className="system-sm-regular text-text-secondary">
           {logs.data.map((log: WorkflowAppLogDetail) => {
-            const endUser = log.created_by_end_user ? log.created_by_end_user.session_id : defaultValue
+            const endUser = log.created_by_end_user ? log.created_by_end_user.session_id : log.created_by_account ? log.created_by_account.name : defaultValue
             return <tr
               key={log.id}
-              className={`border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer ${currentLog?.id !== log.id ? '' : 'bg-gray-50'}`}
+              className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', currentLog?.id !== log.id ? '' : 'bg-background-default-hover')}
               onClick={() => {
                 setCurrentLog(log)
                 setShowDrawer(true)
               }}>
-              <td className='text-center align-middle'>{!log.read_at && <span className='inline-block bg-[#3F83F8] h-1.5 w-1.5 rounded'></span>}</td>
-              <td className='w-[160px]'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
-              <td>{statusTdRender(log.workflow_run.status)}</td>
-              <td>
+              <td className='h-4'>
+                {!log.read_at && (
+                  <div className='flex items-center p-3 pr-0.5'>
+                    <span className='inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500'></span>
+                  </div>
+                )}
+              </td>
+              <td className='w-[160px] p-3 pr-2'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
+              <td className='p-3 pr-2'>{statusTdRender(log.workflow_run.status)}</td>
+              <td className='p-3 pr-2'>
                 <div className={cn(
-                  log.workflow_run.elapsed_time === 0 && 'text-gray-400',
+                  log.workflow_run.elapsed_time === 0 && 'text-text-quaternary',
                 )}>{`${log.workflow_run.elapsed_time.toFixed(3)}s`}</div>
               </td>
-              <td>{log.workflow_run.total_tokens}</td>
-              <td>
-                <div className={cn(endUser === defaultValue ? 'text-gray-400' : 'text-gray-700', 'text-sm overflow-hidden text-ellipsis whitespace-nowrap')}>
+              <td className='p-3 pr-2'>{log.workflow_run.total_tokens}</td>
+              <td className='p-3 pr-2'>
+                <div className={cn(endUser === defaultValue ? 'text-text-quaternary' : 'text-text-secondary', 'overflow-hidden text-ellipsis whitespace-nowrap')}>
                   {endUser}
                 </div>
               </td>
-              {/* <td>VERSION</td> */}
             </tr>
           })}
         </tbody>
@@ -123,7 +134,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-gray-200'
+        panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-components-panel-border'
       >
         <DetailPanel onClose={onCloseDrawer} runID={currentLog?.workflow_run.id || ''} />
       </Drawer>

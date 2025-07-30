@@ -2,7 +2,6 @@ import {
   memo,
   useMemo,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import { useStore } from '../../../store'
@@ -20,7 +19,9 @@ import {
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
 import NodeVariableItem from './node-variable-item'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import cn from '@/utils/classnames'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 type GroupItem = {
@@ -55,7 +56,7 @@ const NodeGroupItem = ({
     const group = item.variableAssignerNodeData.advanced_settings?.groups.find(group => group.groupId === item.targetHandleId)
     return group?.output_type || ''
   }, [item.variableAssignerNodeData, item.targetHandleId, groupEnabled])
-  const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId, filterVar(outputType as VarType))
+  const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId, filterVar(outputType as VarType), true)
   const showSelectionBorder = useMemo(() => {
     if (groupEnabled && enteringNodePayload?.nodeId === item.variableAssignerNodeId) {
       if (hoveringAssignVariableGroupId)
@@ -80,26 +81,26 @@ const NodeGroupItem = ({
   return (
     <div
       className={cn(
-        'relative pt-1 px-1.5 pb-1.5 rounded-lg border-[1.5px] border-transparent',
-        showSelectionBorder && '!border-gray-300 !border-dashed bg-black/[0.02]',
-        showSelectedBorder && '!border-primary-600 !bg-primary-50',
+        'relative rounded-lg border-[1.5px] border-transparent px-1.5 pb-1.5 pt-1',
+        showSelectionBorder && '!border-dashed !border-divider-subtle bg-state-base-hover',
+        showSelectedBorder && '!border-text-accent !bg-util-colors-blue-blue-50',
       )}
       onMouseEnter={() => groupEnabled && handleGroupItemMouseEnter(item.targetHandleId)}
       onMouseLeave={handleGroupItemMouseLeave}
     >
-      <div className='flex items-center justify-between h-4 text-[10px] font-medium text-gray-500'>
+      <div className='flex h-4 items-center justify-between text-[10px] font-medium text-text-tertiary'>
         <span
           className={cn(
-            'grow uppercase truncate',
-            showSelectedBorder && 'text-primary-600',
+            'grow truncate uppercase',
+            showSelectedBorder && 'text-text-accent',
           )}
           title={item.title}
         >
           {item.title}
         </span>
         <div className='flex items-center'>
-          <span className='shrink-0 ml-2'>{item.type}</span>
-          <div className='ml-2 mr-1 w-[1px] h-2.5 bg-gray-200'></div>
+          <span className='ml-2 shrink-0'>{item.type}</span>
+          <div className='ml-2 mr-1 h-2.5 w-[1px] bg-divider-regular'></div>
           <AddVariable
             availableVars={availableVars}
             variableAssignerNodeId={item.variableAssignerNodeId}
@@ -112,7 +113,7 @@ const NodeGroupItem = ({
         !item.variables.length && (
           <div
             className={cn(
-              'relative flex items-center px-1 h-[22px] justify-between bg-gray-100 rounded-md space-x-1 text-[10px] font-normal text-gray-400 uppercase',
+              'relative flex h-[22px] items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-[10px] font-normal uppercase text-text-tertiary',
               (showSelectedBorder || showSelectionBorder) && '!bg-black/[0.02]',
             )}
           >
@@ -123,12 +124,19 @@ const NodeGroupItem = ({
       {
         !!item.variables.length && item.variables.map((variable = [], index) => {
           const isSystem = isSystemVar(variable)
+          const isEnv = isENV(variable)
+          const isChatVar = isConversationVar(variable)
+
           const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
           const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
+          const isException = isExceptionVariable(varName, node?.data.type)
 
           return (
             <NodeVariableItem
               key={index}
+              isEnv={isEnv}
+              isChatVar={isChatVar}
+              isException={isException}
               node={node as Node}
               varName={varName}
               showBorder={showSelectedBorder || showSelectionBorder}

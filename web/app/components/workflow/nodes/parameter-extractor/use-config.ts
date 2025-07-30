@@ -8,18 +8,21 @@ import {
   useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
-import useOneStepRun from '../_base/hooks/use-one-step-run'
+import useConfigVision from '../../hooks/use-config-vision'
 import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import {
-  ModelFeatureEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { supportFunctionCall } from '@/utils/tool-call'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
+  const {
+    deleteNodeInspectorVars,
+    renameInspectVarName,
+  } = useInspectVarsCrud()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange } = useWorkflow()
   const isChatMode = useIsChatMode()
@@ -60,9 +63,14 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     })
     setInputs(newInputs)
 
-    if (moreInfo && moreInfo?.type === ChangeType.changeVarName && moreInfo.payload)
+    if (moreInfo && moreInfo?.type === ChangeType.changeVarName && moreInfo.payload) {
       handleOutVarRenameChange(id, [id, moreInfo.payload.beforeKey], [id, moreInfo.payload.afterKey!])
-  }, [handleOutVarRenameChange, id, inputs, setInputs])
+      renameInspectVarName(id, moreInfo.payload.beforeKey, moreInfo.payload.afterKey!)
+    }
+    else {
+      deleteNodeInspectorVars(id)
+    }
+  }, [deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, renameInspectVarName, setInputs])
 
   const addExtractParameter = useCallback((payload: Param) => {
     const newInputs = produce(inputs, (draft) => {
@@ -71,7 +79,8 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
       draft.parameters.push(payload)
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+    deleteNodeInspectorVars(id)
+  }, [deleteNodeInspectorVars, id, inputs, setInputs])
 
   // model
   const model = inputs.model || {
@@ -84,8 +93,22 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   }
   const modelMode = inputs.model?.mode
   const isChatModel = modelMode === 'chat'
-
   const isCompletionModel = !isChatModel
+
+  const {
+    isVisionModel,
+    handleVisionResolutionEnabledChange,
+    handleVisionResolutionChange,
+    handleModelChanged: handleVisionConfigAfterModelChanged,
+  } = useConfigVision(model, {
+    payload: inputs.vision,
+    onChange: (newPayload) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.vision = newPayload
+      })
+      setInputs(newInputs)
+    },
+  })
 
   const appendDefaultPromptConfig = useCallback((draft: ParameterExtractorNodeType, defaultConfig: any, _passInIsChatMode?: boolean) => {
     const promptTemplates = defaultConfig.prompt_templates
@@ -97,7 +120,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     }
   }, [isChatModel])
 
-  // const [modelChanged, setModelChanged] = useState(false)
+  const [modelChanged, setModelChanged] = useState(false)
   const {
     currentProvider,
     currentModel,
@@ -113,7 +136,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
         appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
     })
     setInputs(newInputs)
-    // setModelChanged(true)
+    setModelChanged(true)
   }, [setInputs, defaultConfig, appendDefaultPromptConfig])
 
   useEffect(() => {
@@ -126,6 +149,15 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     }
   }, [model?.provider, currentProvider, currentModel, handleModelChanged])
 
+  // change to vision model to set vision enabled, else disabled
+  useEffect(() => {
+    if (!modelChanged)
+      return
+    setModelChanged(false)
+    handleVisionConfigAfterModelChanged()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVisionModel, modelChanged])
+
   const {
     currentModel: currModel,
   } = useTextGenerationCurrentProviderAndModelAndModelList(
@@ -135,7 +167,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     },
   )
 
-  const isSupportFunctionCall = currModel?.features?.includes(ModelFeatureEnum.toolCall) || currModel?.features?.includes(ModelFeatureEnum.multiToolCall)
+  const isSupportFunctionCall = supportFunctionCall(currModel?.features)
 
   const filterInputVar = useCallback((varPayload: Var) => {
     return [VarType.number, VarType.string].includes(varPayload.type)
@@ -190,39 +222,6 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    getInputVars,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<ParameterExtractorNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {
-      query: '',
-    },
-  })
-
-  const varInputs = getInputVars([inputs.instruction])
-  const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
-    return vars
-  })()
-
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
-
   return {
     readOnly,
     handleInputVarChange,
@@ -243,15 +242,9 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     isSupportFunctionCall,
     handleReasoningModeChange,
     handleMemoryChange,
-    varInputs,
-    inputVarValues,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
-    setInputVarValues,
+    isVisionModel,
+    handleVisionResolutionEnabledChange,
+    handleVisionResolutionChange,
   }
 }
 

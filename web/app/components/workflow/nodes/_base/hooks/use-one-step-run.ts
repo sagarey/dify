@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { unionBy } from 'lodash-es'
 import produce from 'immer'
@@ -7,12 +7,13 @@ import {
   useNodeDataUpdate,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
-import { getNodeInfoById, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getNodeInfoById, isConversationVar, isENV, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 import type { CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { getIterationSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { fetchNodeInspectVars, getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
 import Toast from '@/app/components/base/toast'
 import LLMDefault from '@/app/components/workflow/nodes/llm/default'
 import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
@@ -23,12 +24,15 @@ import QuestionClassifyDefault from '@/app/components/workflow/nodes/question-cl
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
 import ToolDefault from '@/app/components/workflow/nodes/tool/default'
 import VariableAssigner from '@/app/components/workflow/nodes/variable-assigner/default'
+import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import ParameterExtractorDefault from '@/app/components/workflow/nodes/parameter-extractor/default'
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
+import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
+import LoopDefault from '@/app/components/workflow/nodes/loop/default'
 import { ssePost } from '@/service/base'
-
+import { noop } from 'lodash-es'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
-import type { NodeTracing } from '@/types/workflow'
+import type { NodeRunResult, NodeTracing } from '@/types/workflow'
 const { checkValid: checkLLMValid } = LLMDefault
 const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
 const { checkValid: checkIfElseValid } = IfElseDefault
@@ -38,9 +42,17 @@ const { checkValid: checkQuestionClassifyValid } = QuestionClassifyDefault
 const { checkValid: checkHttpValid } = HTTPDefault
 const { checkValid: checkToolValid } = ToolDefault
 const { checkValid: checkVariableAssignerValid } = VariableAssigner
+const { checkValid: checkAssignerValid } = Assigner
 const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 const { checkValid: checkIterationValid } = IterationDefault
-
+const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
+const { checkValid: checkLoopValid } = LoopDefault
+import {
+  useStoreApi,
+} from 'reactflow'
+import { useInvalidLastRun } from '@/service/use-workflow'
+import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
+// eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
   [BlockEnum.KnowledgeRetrieval]: checkKnowledgeRetrievalValid,
@@ -50,18 +62,23 @@ const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.QuestionClassifier]: checkQuestionClassifyValid,
   [BlockEnum.HttpRequest]: checkHttpValid,
   [BlockEnum.Tool]: checkToolValid,
-  [BlockEnum.VariableAssigner]: checkVariableAssignerValid,
+  [BlockEnum.VariableAssigner]: checkAssignerValid,
   [BlockEnum.VariableAggregator]: checkVariableAssignerValid,
   [BlockEnum.ParameterExtractor]: checkParameterExtractorValid,
   [BlockEnum.Iteration]: checkIterationValid,
+  [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
+  [BlockEnum.Loop]: checkLoopValid,
 } as any
 
-type Params<T> = {
+export type Params<T> = {
   id: string
   data: CommonNodeType<T>
   defaultRunInputData: Record<string, any>
   moreDataForCheckValid?: any
   iteratorInputKey?: string
+  loopInputKey?: string
+  isRunAfterSingleRun: boolean
+  isPaused: boolean
 }
 
 const varTypeToInputVarType = (type: VarType, {
@@ -79,8 +96,10 @@ const varTypeToInputVarType = (type: VarType, {
     return InputVarType.number
   if ([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(type))
     return InputVarType.json
+  if (type === VarType.file)
+    return InputVarType.singleFile
   if (type === VarType.arrayFile)
-    return InputVarType.files
+    return InputVarType.multiFiles
 
   return InputVarType.textInput
 }
@@ -91,64 +110,118 @@ const useOneStepRun = <T>({
   defaultRunInputData,
   moreDataForCheckValid,
   iteratorInputKey,
+  loopInputKey,
+  isRunAfterSingleRun,
+  isPaused,
 }: Params<T>) => {
   const { t } = useTranslation()
   const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } = useWorkflow() as any
+  const conversationVariables = useStore(s => s.conversationVariables)
   const isChatMode = useIsChatMode()
   const isIteration = data.type === BlockEnum.Iteration
+  const isLoop = data.type === BlockEnum.Loop
+  const isStartNode = data.type === BlockEnum.Start
 
   const availableNodes = getBeforeNodesInSameBranch(id)
   const availableNodesIncludeParent = getBeforeNodesInSameBranchIncludeParent(id)
-  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
+  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables)
   const getVar = (valueSelector: ValueSelector): Var | undefined => {
-    let res: Var | undefined
     const isSystem = valueSelector[0] === 'sys'
-    const targetVar = isSystem ? allOutputVars.find(item => !!item.isStartNode) : allOutputVars.find(v => v.nodeId === valueSelector[0])
+    const targetVar = allOutputVars.find(item => isSystem ? !!item.isStartNode : item.nodeId === valueSelector[0])
     if (!targetVar)
       return undefined
+
     if (isSystem)
       return targetVar.vars.find(item => item.variable.split('.')[1] === valueSelector[1])
 
     let curr: any = targetVar.vars
-    if (!curr)
-      return
+    for (let i = 1; i < valueSelector.length; i++) {
+      const key = valueSelector[i]
+      const isLast = i === valueSelector.length - 1
 
-    valueSelector.slice(1).forEach((key, i) => {
-      const isLast = i === valueSelector.length - 2
-      curr = curr?.find((v: any) => v.variable === key)
-      if (isLast) {
-        res = curr
-      }
-      else {
-        if (curr?.type === VarType.object)
-          curr = curr.children
-      }
-    })
+      if (Array.isArray(curr))
+        curr = curr.find((v: any) => v.variable.replace('conversation.', '') === key)
 
-    return res
+      if (isLast)
+        return curr
+      else if (curr?.type === VarType.object || curr?.type === VarType.file)
+        curr = curr.children
+    }
+
+    return undefined
   }
 
   const checkValid = checkValidFns[data.type]
+
   const appId = useAppStore.getState().appDetail?.id
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
-  const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey].length : 0
-  const [runResult, setRunResult] = useState<any>(null)
+  const runInputDataRef = useRef(runInputData)
+  const handleSetRunInputData = useCallback((data: Record<string, any>) => {
+    runInputDataRef.current = data
+    setRunInputData(data)
+  }, [])
+  const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey]?.length : 0
+  const loopTimes = loopInputKey ? runInputData[loopInputKey]?.length : 0
 
-  const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
-  const [canShowSingleRun, setCanShowSingleRun] = useState(false)
-  const isShowSingleRun = data._isSingleRun && canShowSingleRun
-  const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
-
+  const store = useStoreApi()
+  const workflowStore = useWorkflowStore()
+  const {
+    setShowSingleRunPanel,
+  } = workflowStore.getState()
+  const invalidLastRun = useInvalidLastRun(appId!, id)
+  const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
+  const {
+    appendNodeInspectVars,
+    invalidateSysVarValues,
+    invalidateConversationVarValues,
+  } = useInspectVarsCrud()
+  const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
+  const isPausedRef = useRef(isPaused)
   useEffect(() => {
-    if (!checkValid) {
-      setCanShowSingleRun(true)
+    isPausedRef.current = isPaused
+  }, [isPaused])
+
+  const setRunResult = useCallback(async (data: NodeRunResult | null) => {
+    const isPaused = isPausedRef.current
+
+    // The backend don't support pause the single run, so the frontend handle the pause state.
+    if(isPaused)
+      return
+
+    const canRunLastRun = !isRunAfterSingleRun || runningStatus === NodeRunningStatus.Succeeded
+    if(!canRunLastRun) {
+      doSetRunResult(data)
       return
     }
 
-    if (data._isSingleRun) {
-      const { isValid, errorMessage } = checkValid(data, t, moreDataForCheckValid)
-      setCanShowSingleRun(isValid)
-      if (!isValid) {
+    // run fail may also update the inspect vars when the node set the error default output.
+    const vars = await fetchNodeInspectVars(appId!, id)
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    appendNodeInspectVars(id, vars, nodes)
+    if(data?.status === NodeRunningStatus.Succeeded) {
+      invalidLastRun()
+      if(isStartNode)
+        invalidateSysVarValues()
+      invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
+    }
+  }, [isRunAfterSingleRun, runningStatus, appId, id, store, appendNodeInspectVars, invalidLastRun, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
+
+  const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
+  const setNodeRunning = () => {
+    handleNodeDataUpdate({
+      id,
+      data: {
+        ...data,
+        _singleRunningStatus: NodeRunningStatus.Running,
+      },
+    })
+  }
+  const checkValidWrap = () => {
+    if(!checkValid)
+      return { isValid: true, errorMessage: '' }
+    const res = checkValid(data, t, moreDataForCheckValid)
+    if(!res.isValid) {
         handleNodeDataUpdate({
           id,
           data: {
@@ -158,12 +231,33 @@ const useOneStepRun = <T>({
         })
         Toast.notify({
           type: 'error',
-          message: errorMessage,
+          message: res.errorMessage,
         })
-      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return res
+  }
+  const [canShowSingleRun, setCanShowSingleRun] = useState(false)
+  const isShowSingleRun = data._isSingleRun && canShowSingleRun
+  const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[]>([])
+  const [loopRunResult, setLoopRunResult] = useState<NodeTracing[]>([])
+
+  useEffect(() => {
+    if (!checkValid) {
+      setCanShowSingleRun(true)
+      return
+    }
+
+    if (data._isSingleRun) {
+      const { isValid } = checkValidWrap()
+      setCanShowSingleRun(isValid)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data._isSingleRun])
+
+  useEffect(() => {
+    setShowSingleRunPanel(!!isShowSingleRun)
+  }, [isShowSingleRun, setShowSingleRunPanel])
+
   const hideSingleRun = () => {
     handleNodeDataUpdate({
       id,
@@ -182,7 +276,6 @@ const useOneStepRun = <T>({
       },
     })
   }
-  const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
   const isCompleted = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
 
   const handleRun = async (submitData: Record<string, any>) => {
@@ -190,29 +283,47 @@ const useOneStepRun = <T>({
       id,
       data: {
         ...data,
+        _isSingleRun: false,
         _singleRunningStatus: NodeRunningStatus.Running,
       },
     })
     let res: any
+    let hasError = false
     try {
-      if (!isIteration) {
-        res = await singleNodeRun(appId!, id, { inputs: submitData }) as any
+      if (!isIteration && !isLoop) {
+        const isStartNode = data.type === BlockEnum.Start
+        const postData: Record<string, any> = {}
+        if(isStartNode) {
+          const { '#sys.query#': query, '#sys.files#': files, ...inputs } = submitData
+          if(isChatMode)
+            postData.conversation_id = ''
+
+          postData.inputs = inputs
+          postData.query = query
+          postData.files = files || []
+        }
+        else {
+          postData.inputs = submitData
+        }
+        res = await singleNodeRun(appId!, id, postData) as any
       }
-      else {
+      else if (isIteration) {
         setIterationRunResult([])
-        let _iterationResult: NodeTracing[][] = []
+        let _iterationResult: NodeTracing[] = []
         let _runResult: any = null
         ssePost(
           getIterationSingleNodeRunUrl(isChatMode, appId!, id),
           { body: { inputs: submitData } },
           {
-            onWorkflowStarted: () => {
-            },
+            onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
+              if(isPausedRef.current)
+                return
               handleNodeDataUpdate({
                 id,
                 data: {
                   ...data,
+                  _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Succeeded,
                 },
               })
@@ -220,27 +331,43 @@ const useOneStepRun = <T>({
               _runResult.created_by = iterationData.created_by.name
               setRunResult(_runResult)
             },
-            onIterationNext: () => {
-              // iteration next trigger time is triggered one more time than iterationTimes
-              if (_iterationResult.length >= iterationTimes!)
-                return
-
+            onIterationStart: (params) => {
               const newIterationRunResult = produce(_iterationResult, (draft) => {
-                draft.push([])
+                draft.push({
+                  ...params.data,
+                  status: NodeRunningStatus.Running,
+                })
               })
               _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
+            onIterationNext: () => {
+              // iteration next trigger time is triggered one more time than iterationTimes
+              if (_iterationResult.length >= iterationTimes!)
+                return _iterationResult.length >= iterationTimes!
+            },
             onIterationFinish: (params) => {
               _runResult = params.data
               setRunResult(_runResult)
+              const iterationRunResult = _iterationResult
+              const currentIndex = iterationRunResult.findIndex(trace => trace.id === params.data.id)
+              const newIterationRunResult = produce(iterationRunResult, (draft) => {
+                if (currentIndex > -1) {
+                  draft[currentIndex] = {
+                    ...draft[currentIndex],
+                    ...data,
+                  }
+                }
+              })
+              _iterationResult = newIterationRunResult
+              setIterationRunResult(newIterationRunResult)
             },
             onNodeStarted: (params) => {
               const newIterationRunResult = produce(_iterationResult, (draft) => {
-                draft[draft.length - 1].push({
+                draft.push({
                   ...params.data,
                   status: NodeRunningStatus.Running,
-                } as NodeTracing)
+                })
               })
               _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
@@ -249,23 +376,33 @@ const useOneStepRun = <T>({
               const iterationRunResult = _iterationResult
 
               const { data } = params
-              const currentIndex = iterationRunResult[iterationRunResult.length - 1].findIndex(trace => trace.node_id === data.node_id)
+              const currentIndex = iterationRunResult.findIndex(trace => trace.id === data.id)
               const newIterationRunResult = produce(iterationRunResult, (draft) => {
                 if (currentIndex > -1) {
-                  draft[draft.length - 1][currentIndex] = {
+                  draft[currentIndex] = {
+                    ...draft[currentIndex],
                     ...data,
-                    status: NodeRunningStatus.Succeeded,
-                  } as NodeTracing
+                  }
                 }
               })
               _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
+            onNodeRetry: (params) => {
+              const newIterationRunResult = produce(_iterationResult, (draft) => {
+                draft.push(params.data)
+              })
+              _iterationResult = newIterationRunResult
+              setIterationRunResult(newIterationRunResult)
+            },
             onError: () => {
+              if(isPausedRef.current)
+                return
               handleNodeDataUpdate({
                 id,
                 data: {
                   ...data,
+                  _isSingleRun: false,
                   _singleRunningStatus: NodeRunningStatus.Failed,
                 },
               })
@@ -273,15 +410,125 @@ const useOneStepRun = <T>({
           },
         )
       }
-      if (res.error)
+      else if (isLoop) {
+        setLoopRunResult([])
+        let _loopResult: NodeTracing[] = []
+        let _runResult: any = null
+        ssePost(
+          getLoopSingleNodeRunUrl(isChatMode, appId!, id),
+          { body: { inputs: submitData } },
+          {
+            onWorkflowStarted: noop,
+            onWorkflowFinished: (params) => {
+              if(isPausedRef.current)
+                return
+              handleNodeDataUpdate({
+                id,
+                data: {
+                  ...data,
+                  _isSingleRun: false,
+                  _singleRunningStatus: NodeRunningStatus.Succeeded,
+                },
+              })
+              const { data: loopData } = params
+              _runResult.created_by = loopData.created_by.name
+              setRunResult(_runResult)
+            },
+            onLoopStart: (params) => {
+              const newLoopRunResult = produce(_loopResult, (draft) => {
+                draft.push({
+                  ...params.data,
+                  status: NodeRunningStatus.Running,
+                })
+              })
+              _loopResult = newLoopRunResult
+              setLoopRunResult(newLoopRunResult)
+            },
+            onLoopNext: () => {
+              // loop next trigger time is triggered one more time than loopTimes
+              if (_loopResult.length >= loopTimes!)
+                return _loopResult.length >= loopTimes!
+            },
+            onLoopFinish: (params) => {
+              _runResult = params.data
+              setRunResult(_runResult)
+
+              const loopRunResult = _loopResult
+              const currentIndex = loopRunResult.findIndex(trace => trace.id === params.data.id)
+              const newLoopRunResult = produce(loopRunResult, (draft) => {
+                if (currentIndex > -1) {
+                  draft[currentIndex] = {
+                    ...draft[currentIndex],
+                    ...data,
+                  }
+                }
+              })
+              _loopResult = newLoopRunResult
+              setLoopRunResult(newLoopRunResult)
+            },
+            onNodeStarted: (params) => {
+              const newLoopRunResult = produce(_loopResult, (draft) => {
+                draft.push({
+                  ...params.data,
+                  status: NodeRunningStatus.Running,
+                })
+              })
+              _loopResult = newLoopRunResult
+              setLoopRunResult(newLoopRunResult)
+            },
+            onNodeFinished: (params) => {
+              const loopRunResult = _loopResult
+
+              const { data } = params
+              const currentIndex = loopRunResult.findIndex(trace => trace.id === data.id)
+              const newLoopRunResult = produce(loopRunResult, (draft) => {
+                if (currentIndex > -1) {
+                  draft[currentIndex] = {
+                    ...draft[currentIndex],
+                    ...data,
+                  }
+                }
+              })
+              _loopResult = newLoopRunResult
+              setLoopRunResult(newLoopRunResult)
+            },
+            onNodeRetry: (params) => {
+              const newLoopRunResult = produce(_loopResult, (draft) => {
+                draft.push(params.data)
+              })
+              _loopResult = newLoopRunResult
+              setLoopRunResult(newLoopRunResult)
+            },
+            onError: () => {
+              if(isPausedRef.current)
+                return
+              handleNodeDataUpdate({
+                id,
+                data: {
+                  ...data,
+                  _isSingleRun: false,
+                  _singleRunningStatus: NodeRunningStatus.Failed,
+                },
+              })
+            },
+          },
+        )
+      }
+      if (res && res.error)
         throw new Error(res.error)
     }
     catch (e: any) {
-      if (!isIteration) {
+      console.error(e)
+      hasError = true
+      invalidLastRun()
+      if (!isIteration && !isLoop) {
+        if(isPausedRef.current)
+          return
         handleNodeDataUpdate({
           id,
           data: {
             ...data,
+            _isSingleRun: false,
             _singleRunningStatus: NodeRunningStatus.Failed,
           },
         })
@@ -289,7 +536,7 @@ const useOneStepRun = <T>({
       }
     }
     finally {
-      if (!isIteration) {
+      if (!isPausedRef.current && !isIteration && !isLoop && res) {
         setRunResult({
           ...res,
           total_tokens: res.execution_metadata?.total_tokens || 0,
@@ -297,11 +544,17 @@ const useOneStepRun = <T>({
         })
       }
     }
-    if (!isIteration) {
+    if(isPausedRef.current)
+      return
+
+    if (!isIteration && !isLoop && !hasError) {
+      if(isPausedRef.current)
+        return
       handleNodeDataUpdate({
         id,
         data: {
           ...data,
+          _isSingleRun: false,
           _singleRunningStatus: NodeRunningStatus.Succeeded,
         },
       })
@@ -322,7 +575,7 @@ const useOneStepRun = <T>({
     if (!variables)
       return []
 
-    const varInputs = variables.map((item) => {
+    const varInputs = variables.filter(item => !isENV(item.value_selector)).map((item) => {
       const originalVar = getVar(item.value_selector)
       if (!originalVar) {
         return {
@@ -330,6 +583,7 @@ const useOneStepRun = <T>({
           variable: item.variable,
           type: InputVarType.textInput,
           required: true,
+          value_selector: item.value_selector,
         }
       }
       return {
@@ -361,6 +615,7 @@ const useOneStepRun = <T>({
           nodeType: varInfo?.type,
           nodeName: varInfo?.title || availableNodesIncludeParent[0]?.data.title, // default start node title
           variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+          isChatVar: isConversationVar(item),
         },
         variable: `#${item.join('.')}#`,
         value_selector: item,
@@ -371,20 +626,32 @@ const useOneStepRun = <T>({
     return varInputs
   }
 
+  const varSelectorsToVarInputs = (valueSelectors: ValueSelector[] | string[]): InputVar[] => {
+    return valueSelectors.filter(item => !!item).map((item) => {
+      return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]
+    })
+  }
+
   return {
+    appId,
     isShowSingleRun,
     hideSingleRun,
     showSingleRun,
     toVarInputs,
+    varSelectorsToVarInputs,
     getInputVars,
     runningStatus,
     isCompleted,
     handleRun,
     handleStop,
     runInputData,
-    setRunInputData,
+    runInputDataRef,
+    setRunInputData: handleSetRunInputData,
     runResult,
     iterationRunResult,
+    loopRunResult,
+    setNodeRunning,
+    checkValid: checkValidWrap,
   }
 }
 

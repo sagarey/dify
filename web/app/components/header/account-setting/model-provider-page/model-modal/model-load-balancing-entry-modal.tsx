@@ -7,6 +7,9 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiErrorWarningFill,
+} from '@remixicon/react'
 import type {
   CredentialFormSchema,
   CredentialFormSchemaRadio,
@@ -32,13 +35,12 @@ import Form from './Form'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useToastContext } from '@/app/components/base/toast'
-import ConfirmCommon from '@/app/components/base/confirm/common'
+import Confirm from '@/app/components/base/confirm'
 
 type ModelModalProps = {
   provider: ModelProvider
@@ -190,12 +192,12 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   })
   const getSecretValues = useCallback((v: FormValue) => {
     return secretFormSchemas.reduce((prev, next) => {
-      if (v[next.variable] === initialFormSchemasValue[next.variable])
+      if (isEditMode && v[next.variable] && v[next.variable] === initialFormSchemasValue[next.variable])
         prev[next.variable] = '[__HIDDEN__]'
 
       return prev
     }, {} as Record<string, string>)
-  }, [initialFormSchemasValue, secretFormSchemas])
+  }, [initialFormSchemasValue, isEditMode, secretFormSchemas])
 
   // const handleValueChange = ({ __model_type, __model_name, ...v }: FormValue) => {
   const handleValueChange = (v: FormValue) => {
@@ -212,6 +214,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
           ...value,
           ...getSecretValues(value),
         },
+        entry?.id,
       )
       if (res.status === ValidatedStatus.Success) {
         // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -238,11 +241,11 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
 
   return (
     <PortalToFollowElem open>
-      <PortalToFollowElemContent className='w-full h-full z-[60]'>
+      <PortalToFollowElemContent className='z-[60] h-full w-full'>
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
+          <div className='mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-white shadow-xl'>
             <div className='px-8 pt-8'>
-              <div className='flex justify-between items-center mb-2'>
+              <div className='mb-2 flex items-center justify-between'>
                 <div className='text-xl font-semibold text-gray-900'>{t(isEditMode ? 'common.modelProvider.editConfig' : 'common.modelProvider.addConfig')}</div>
               </div>
               <Form
@@ -254,7 +257,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
                 showOnVariableMap={showOnVariableMap}
                 isEditMode={isEditMode}
               />
-              <div className='sticky bottom-0 flex justify-between items-center py-6 flex-wrap gap-y-2 bg-white'>
+              <div className='sticky bottom-0 flex flex-wrap items-center justify-between gap-y-2 bg-white py-6'>
                 {
                   (provider.help && (provider.help.title || provider.help.url))
                     ? (
@@ -265,7 +268,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
                         onClick={e => !provider.help.url && e.preventDefault()}
                       >
                         {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
-                        <LinkExternal02 className='ml-1 w-3 h-3' />
+                        <LinkExternal02 className='ml-1 h-3 w-3' />
                       </a>
                     )
                     : <div />
@@ -274,7 +277,8 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
                   {
                     isEditMode && (
                       <Button
-                        className='mr-2 h-9 text-sm font-medium text-[#D92D20]'
+                        size='large'
+                        className='mr-2 text-[#D92D20]'
                         onClick={() => setShowConfirm(true)}
                       >
                         {t('common.operation.remove')}
@@ -282,14 +286,15 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
                     )
                   }
                   <Button
-                    className='mr-2 h-9 text-sm font-medium text-gray-700'
+                    size='large'
+                    className='mr-2'
                     onClick={onCancel}
                   >
                     {t('common.operation.cancel')}
                   </Button>
                   <Button
-                    className='h-9 text-sm font-medium'
-                    type='primary'
+                    size='large'
+                    variant='primary'
                     onClick={handleSave}
                     disabled={loading || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)}
                   >
@@ -302,17 +307,17 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
               {
                 (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
                   ? (
-                    <div className='flex px-[10px] py-3 bg-[#FEF3F2] text-xs text-[#D92D20]'>
-                      <AlertCircle className='mt-[1px] mr-2 w-[14px] h-[14px]' />
+                    <div className='flex bg-[#FEF3F2] px-[10px] py-3 text-xs text-[#D92D20]'>
+                      <RiErrorWarningFill className='mr-2 mt-[1px] h-[14px] w-[14px]' />
                       {validatedStatusState.message}
                     </div>
                   )
                   : (
-                    <div className='flex justify-center items-center py-3 bg-gray-50 text-xs text-gray-500'>
-                      <Lock01 className='mr-1 w-3 h-3 text-gray-500' />
+                    <div className='flex items-center justify-center bg-gray-50 py-3 text-xs text-gray-500'>
+                      <Lock01 className='mr-1 h-3 w-3 text-gray-500' />
                       {t('common.modelProvider.encrypted.front')}
                       <a
-                        className='text-primary-600 mx-1'
+                        className='mx-1 text-primary-600'
                         target='_blank' rel='noopener noreferrer'
                         href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
                       >
@@ -326,12 +331,11 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
           </div>
           {
             showConfirm && (
-              <ConfirmCommon
+              <Confirm
                 title={t('common.modelProvider.confirmDelete')}
                 isShow={showConfirm}
                 onCancel={() => setShowConfirm(false)}
                 onConfirm={handleRemove}
-                confirmWrapperClassName='z-[70]'
               />
             )
           }

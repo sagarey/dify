@@ -1,9 +1,11 @@
+import type { AppMode } from '@/types/app'
+
 export const getRedirection = (
-  isCurrentWorkspaceManager: boolean,
-  app: any,
+  isCurrentWorkspaceEditor: boolean,
+  app: { id: string, mode: AppMode },
   redirectionFunc: (href: string) => void,
 ) => {
-  if (!isCurrentWorkspaceManager) {
+  if (!isCurrentWorkspaceEditor) {
     redirectionFunc(`/app/${app.id}/overview`)
   }
   else {

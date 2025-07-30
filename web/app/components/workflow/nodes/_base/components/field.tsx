@@ -1,56 +1,60 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React from 'react'
-import cn from 'classnames'
+import {
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import type { DefaultTFuncReturn } from 'i18next'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import cn from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   className?: string
-  title: JSX.Element | string | DefaultTFuncReturn
-  tooltip?: string
+  title: ReactNode
+  tooltip?: ReactNode
+  isSubTitle?: boolean
   supportFold?: boolean
-  children?: JSX.Element | string | null
-  operations?: JSX.Element
+  children?: React.JSX.Element | string | null
+  operations?: React.JSX.Element
   inline?: boolean
+  required?: boolean
 }
 
-const Filed: FC<Props> = ({
+const Field: FC<Props> = ({
   className,
   title,
+  isSubTitle,
   tooltip,
   children,
   operations,
   inline,
   supportFold,
+  required,
 }) => {
   const [fold, {
     toggle: toggleFold,
   }] = useBoolean(true)
   return (
-    <div className={cn(className, inline && 'flex justify-between items-center w-full')}>
+    <div className={cn(className, inline && 'flex w-full items-center justify-between')}>
       <div
         onClick={() => supportFold && toggleFold()}
-        className={cn('flex justify-between items-center', supportFold && 'cursor-pointer')}>
-        <div className='flex items-center h-6'>
-          <div className='text-[13px] font-medium text-gray-700 uppercase'>{title}</div>
+        className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}>
+        <div className='flex h-6 items-center'>
+          <div className={cn(isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>
+            {title} {required && <span className='text-text-destructive'>*</span>}
+          </div>
           {tooltip && (
-            <TooltipPlus popupContent={
-              <div className='w-[120px]'>
-                {tooltip}
-              </div>}>
-              <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
-            </TooltipPlus>
+            <Tooltip
+              popupContent={tooltip}
+              popupClassName='ml-1'
+              triggerClassName='w-4 h-4 ml-1'
+            />
           )}
-
         </div>
         <div className='flex'>
           {operations && <div>{operations}</div>}
           {supportFold && (
-            <ChevronRight className='w-3.5 h-3.5 text-gray-500 cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(0deg)' : 'rotate(90deg)' }} />
+            <RiArrowDownSLine className='h-4 w-4 cursor-pointer text-text-tertiary transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
           )}
         </div>
       </div>
@@ -58,4 +62,4 @@ const Filed: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(Filed)
+export default React.memo(Field)

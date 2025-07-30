@@ -2,15 +2,16 @@
 import type { FC } from 'react'
 import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import Toast from '../../base/toast'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import type { RetrievalConfig } from '@/types/app'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import Button from '@/app/components/base/button'
-import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDocLink } from '@/context/i18n'
 
 type Props = {
   indexMethod: string
@@ -29,6 +30,7 @@ const ModifyRetrievalModal: FC<Props> = ({
 }) => {
   const ref = useRef(null)
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const [retrievalConfig, setRetrievalConfig] = useState(value)
 
   // useClickAway(() => {
@@ -38,15 +40,11 @@ const ModifyRetrievalModal: FC<Props> = ({
 
   const {
     modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelVaild,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const handleSave = () => {
     if (
       !isReRankModelSelected({
-        rerankDefaultModel,
-        isRerankDefaultModelVaild: !!isRerankDefaultModelVaild,
         rerankModelList,
         retrievalConfig,
         indexMethod,
@@ -55,11 +53,7 @@ const ModifyRetrievalModal: FC<Props> = ({
       Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
       return
     }
-    onSave(ensureRerankModelSelected({
-      rerankDefaultModel: rerankDefaultModel!,
-      retrievalConfig,
-      indexMethod,
-    }))
+    onSave(retrievalConfig)
   }
 
   if (!isShow)
@@ -67,33 +61,44 @@ const ModifyRetrievalModal: FC<Props> = ({
 
   return (
     <div
-      className='w-full flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl'
+      className='flex w-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'
       style={{
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
     >
-      <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
-        <div className='text-base font-semibold text-gray-900'>
+      <div className='h-15 flex shrink-0 justify-between px-3 pb-1 pt-3.5'>
+        <div className='text-base font-semibold text-text-primary'>
           <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
-          <div className='leading-[18px] text-xs font-normal text-gray-500'>
-            <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/features/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+          <div className='text-xs font-normal leading-[18px] text-text-tertiary'>
+            <a
+              target='_blank'
+              rel='noopener noreferrer'
+              href={docLink('/guides/knowledge-base/retrieval-test-and-citation#modify-text-retrieval-setting', {
+                'zh-Hans': '/guides/knowledge-base/retrieval-test-and-citation#修改文本检索方式',
+                'ja-JP': '/guides/knowledge-base/retrieval-test-and-citation',
+              })}
+              className='text-text-accent'
+            >
+              {t('datasetSettings.form.retrievalSetting.learnMore')}
+            </a>
             {t('datasetSettings.form.retrievalSetting.description')}
           </div>
         </div>
-        <div className='flex items-center'>
+        <div className='flex'>
           <div
             onClick={onHide}
-            className='flex justify-center items-center w-6 h-6 cursor-pointer'
+            className='flex h-8 w-8 cursor-pointer items-center justify-center'
           >
-            <XClose className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>
         </div>
       </div>
 
-      <div className='p-6 border-b' style={{
-        borderBottom: 'rgba(0, 0, 0, 0.05)',
-      }}>
+      <div className='px-4 py-2'>
+        <div className='mb-1 text-[13px] font-semibold leading-6 text-text-secondary'>
+          {t('datasetSettings.form.retrievalSetting.method')}
+        </div>
         {indexMethod === 'high_quality'
           ? (
             <RetrievalMethodConfig
@@ -108,14 +113,9 @@ const ModifyRetrievalModal: FC<Props> = ({
             />
           )}
       </div>
-      <div
-        className='flex justify-end pt-6 px-6 border-t'
-        style={{
-          borderColor: 'rgba(0, 0, 0, 0.05)',
-        }}
-      >
-        <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
-        <Button type='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+      <div className='flex justify-end p-4 pt-2'>
+        <Button className='mr-2 shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
+        <Button variant='primary' className='shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
       </div>
     </div>
   )

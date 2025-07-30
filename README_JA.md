@@ -1,10 +1,10 @@
-![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
+![cover-v5-optimized](./images/GitHub_README_if.png)
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
-  <a href="https://docs.dify.ai/getting-started/install-self-hosted">セルフホスト</a> ·
+  <a href="https://docs.dify.ai/getting-started/install-self-hosted">セルフホスティング</a> ·
   <a href="https://docs.dify.ai">ドキュメント</a> ·
-  <a href="https://cal.com/guchenhe/dify-demo">デモのスケジュール</a>
+  <a href="https://dify.ai/pricing">Difyの各種エディションについて</a>
 </p>
 
 <p align="center">
@@ -15,9 +15,15 @@
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
         <img src="https://img.shields.io/discord/1082486657678311454?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
             alt="Discordでチャット"></a>
+    <a href="https://reddit.com/r/difyai" target="_blank">
+        <img src="https://img.shields.io/reddit/subreddit-subscribers/difyai?style=plastic&logo=reddit&label=r%2Fdifyai&labelColor=white"
+            alt="Reddit"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
         <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
-            alt="Twitterでフォロー"></a>
+            alt="X(Twitter)でフォロー"></a>
+    <a href="https://www.linkedin.com/company/langgenius/" target="_blank">
+        <img src="https://custom-icon-badges.demolab.com/badge/LinkedIn-0A66C2?logo=linkedin-white&logoColor=fff"
+            alt="LinkedInでフォロー"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
@@ -29,13 +35,17 @@
 </p>
 
 <p align="center">
-  <a href="./README.md"><img alt="先月のコミット" src="https://img.shields.io/badge/English-d9d9d9"></a>
-  <a href="./README_CN.md"><img alt="先月のコミット" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
-  <a href="./README_JA.md"><img alt="先月のコミット" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
-  <a href="./README_ES.md"><img alt="先月のコミット" src="https://img.shields.io/badge/Español-d9d9d9"></a>
-  <a href="./README_KL.md"><img alt="先月のコミット" src="https://img.shields.io/badge/Français-d9d9d9"></a>
-  <a href="./README_FR.md"><img alt="先月のコミット" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
-  <a href="./README_KR.md"><img alt="先月のコミット" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
+  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
+  <a href="./README_JA.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
+  <a href="./README_ES.md"><img alt="README en Español" src="https://img.shields.io/badge/Español-d9d9d9"></a>
+  <a href="./README_FR.md"><img alt="README en Français" src="https://img.shields.io/badge/Français-d9d9d9"></a>
+  <a href="./README_KL.md"><img alt="README tlhIngan Hol" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
+  <a href="./README_KR.md"><img alt="README in Korean" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
+  <a href="./README_AR.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
+  <a href="./README_TR.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
+  <a href="./README_VI.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
+  <a href="./README_BN.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
 </p>
 
 #
@@ -44,37 +54,32 @@
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
 
-DifyはオープンソースのLLMアプリケーション開発プラットフォームです。直感的なインターフェースには、AIワークフロー、RAGパイプライン、エージェント機能、モデル管理、観測機能などが組み合わさっており、プロトタイプから本番までの移行を迅速に行うことができます。以下は、主要機能のリストです：
+DifyはオープンソースのLLMアプリケーション開発プラットフォームです。直感的なインターフェイスには、AIワークフロー、RAGパイプライン、エージェント機能、モデル管理、観測機能などが組み合わさっており、プロトタイプから生産まで迅速に進めることができます。以下の機能が含まれます：
 </br> </br>
 
-**1. ワークフロー**: 
-  ビジュアルキャンバス上で強力なAIワークフローを構築してテストし、以下の機能を活用してプロトタイプを超えることができます。
+**1. ワークフロー**:
+  強力なAIワークフローをビジュアルキャンバス上で構築し、テストできます。すべての機能、および以下の機能を使用できます。
 
-
-  https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
-
-
-
-**2. 包括的なモデルサポート**: 
-  数百のプロプライエタリ/オープンソースのLLMと、数十の推論プロバイダーおよびセルフホスティングソリューションとのシームレスな統合を提供します。GPT、Mistral、Llama3、およびOpenAI API互換のモデルをカバーします。サポートされているモデルプロバイダーの完全なリストは[こちら](https://docs.dify.ai/getting-started/readme/model-providers)をご覧ください。
+**2. 総合的なモデルサポート**:
+  数百ものプロプライエタリ/オープンソースのLLMと、数十もの推論プロバイダーおよびセルフホスティングソリューションとのシームレスな統合を提供します。GPT、Mistral、Llama3、OpenAI APIと互換性のあるすべてのモデルを統合されています。サポートされているモデルプロバイダーの完全なリストは[こちら](https://docs.dify.ai/getting-started/readme/model-providers)をご覧ください。
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
 
-**3. プロンプトIDE**: 
-  チャットベースのアプリにテキスト読み上げなどの追加機能を追加するプロンプトを作成し、モデルのパフォーマンスを比較する直感的なインターフェース。
+**3. プロンプトIDE**:
+  プロンプトの作成、モデルパフォーマンスの比較が行え、チャットベースのアプリに音声合成などの機能も追加できます。
 
-**4. RAGパイプライン**: 
-  文書の取り込みから取得までをカバーする幅広いRAG機能で、PDF、PPTなどの一般的なドキュメント形式からのテキスト抽出に対するアウトオブボックスのサポートを提供します。
+**4. RAGパイプライン**:
+  ドキュメントの取り込みから検索までをカバーする広範なRAG機能ができます。ほかにもPDF、PPT、その他の一般的なドキュメントフォーマットからのテキスト抽出のサポートも提供します。
 
-**5. エージェント機能**: 
-  LLM関数呼び出しまたはReActに基づいてエージェントを定義し、エージェント向けの事前構築済みまたはカスタムのツールを追加できます。Difyには、Google検索、DELL·E、Stable Diffusion、WolframAlphaなどのAIエージェント用の50以上の組み込みツールが用意されています。
+**5. エージェント機能**:
+  LLM Function CallingやReActに基づくエージェントの定義が可能で、AIエージェント用のプリビルトまたはカスタムツールを追加できます。Difyには、Google検索、DALL·E、Stable Diffusion、WolframAlphaなどのAIエージェント用の50以上の組み込みツールが提供します。
 
-**6. LLMOps**: 
-  アプリケーションログとパフォーマンスを時間の経過とともにモニタリングおよび分析します。本番データと注釈に基づいて、プロンプト、データセット、およびモデルを継続的に改善できます。
+**6. LLMOps**:
+  アプリケーションのログやパフォーマンスを監視と分析し、生産のデータと注釈に基づいて、プロンプト、データセット、モデルを継続的に改善できます。
 
-**7. Backend-as-a-Service**: 
-  Difyのすべての提供には、それに対応するAPIが付属しており、独自のビジネスロジックにDifyをシームレスに統合できます。
+**7. Backend-as-a-Service**:
+  すべての機能はAPIを提供されており、Difyを自分のビジネスロジックに簡単に統合できます。
 
 
 ## 機能比較
@@ -95,9 +100,9 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
   </tr>
   <tr>
     <td align="center">サポートされているLLM</td>
-    <td align="center">バリエーション豊富</td>
-    <td align="center">バリエーション豊富</td>
-    <td align="center">バリエーション豊富</td>
+    <td align="center">バラエティ豊か</td>
+    <td align="center">バラエティ豊か</td>
+    <td align="center">バラエティ豊か</td>
     <td align="center">OpenAIのみ</td>
   </tr>
   <tr>
@@ -147,15 +152,15 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 ## Difyの使用方法
 
 - **クラウド </br>**
-[こちら](https://dify.ai)のDify Cloudサービスを利用して、セットアップ不要で試すことができます。サンドボックスプランには、200回の無料のGPT-4呼び出しが含まれています。
+[こちら](https://dify.ai)のDify Cloudサービスを利用して、セットアップ不要で試すことができます。サンドボックスプランには、200回のGPT-4呼び出しが無料で含まれています。
 
 - **Dify Community Editionのセルフホスティング</br>**
-この[スターターガイド](#quick-start)を使用して、ローカル環境でDifyを簡単に実行できます。
-さらなる参考資料や詳細な手順については、[ドキュメント](https://docs.dify.ai)をご覧ください。
+この[スタートガイド](#クイックスタート)を使用して、ローカル環境でDifyを簡単に実行できます。
+詳しくは[ドキュメント](https://docs.dify.ai)をご覧ください。
 
-- **エンタープライズ/組織向けのDify</br>**
-追加のエンタープライズ向け機能を提供しています。[こちらからミーティングを予約](https://cal.com/guchenhe/30min)したり、[メールを送信](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)してエンタープライズのニーズについて相談してください。 </br>
-  > AWSを使用しているスタートアップや中小企業の場合は、[AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)のDify Premiumをチェックして、ワンクリックで独自のAWS VPCにデプロイできます。カスタムロゴとブランディングでアプリを作成するオプションを備えた手頃な価格のAMIオファリングです。
+- **企業/組織向けのDify</br>**
+企業中心の機能を提供しています。[メールを送信](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)して企業のニーズについて相談してください。 </br>
+  > AWSを使用しているスタートアップ企業や中小企業の場合は、[AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)のDify Premiumをチェックして、ワンクリックで自分のAWS VPCにデプロイできます。さらに、手頃な価格のAMIオファリングとして、ロゴやブランディングをカスタマイズしてアプリケーションを作成するオプションがあります。
 
 
 ## 最新の情報を入手
@@ -168,7 +173,7 @@ GitHub上でDifyにスターを付けることで、Difyに関する新しいニ
 
 ## クイックスタート
 > Difyをインストールする前に、お使いのマシンが以下の最小システム要件を満たしていることを確認してください：
-> 
+>
 >- CPU >= 2コア
 >- RAM >= 4GB
 
@@ -178,6 +183,7 @@ Difyサーバーを起動する最も簡単な方法は、[docker-compose.yml](d
 
 ```bash
 cd docker
+cp .env.example .env
 docker compose up -d
 ```
 
@@ -187,12 +193,39 @@ docker compose up -d
 
 ## 次のステップ
 
-環境設定をカスタマイズする場合は、[docker-compose.yml](docker/docker-compose.yaml)ファイル内のコメントを参照して、環境設定を手動で設定してください。変更を加えた後は、再び `docker-compose up -d` を実行してください。環境変数の完全なリストは[こちら](https://docs.dify.ai/getting-started/install-self-hosted/environments)をご覧ください。
+設定をカスタマイズする必要がある場合は、[.env.example](docker/.env.example) ファイルのコメントを参照し、`.env` ファイルの対応する値を更新してください。さらに、デプロイ環境や要件に応じて、`docker-compose.yaml` ファイル自体を調整する必要がある場合があります。たとえば、イメージのバージョン、ポートのマッピング、ボリュームのマウントなどを変更します。変更を加えた後は、`docker-compose up -d` を再実行してください。利用可能な環境変数の全一覧は、[こちら](https://docs.dify.ai/getting-started/install-self-hosted/environments)で確認できます。
 
-高可用性のセットアップを構成する場合は、コミュニティによって提供されている[Helm Charts](https://helm.sh/)があり、これによりKubernetes上にDifyを展開できます。
+高可用性設定を設定する必要がある場合、コミュニティは[Helm Charts](https://helm.sh/)とYAMLファイルにより、DifyをKubernetesにデプロイすることができます。
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
+- [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+- [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
+- [🚀 新着！YAML ファイル（Dify v1.6.0 対応）by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
+
+#### Terraformを使用したデプロイ
+
+[terraform](https://www.terraform.io/) を使用して、ワンクリックでDifyをクラウドプラットフォームにデプロイします
+
+##### Azure Global
+- [@nikawangによるAzure Terraform](https://github.com/nikawang/dify-azure-terraform)
+
+##### Google Cloud
+- [@sotazumによるGoogle Cloud Terraform](https://github.com/DeNA/dify-google-cloud-terraform)
+
+#### AWS CDK を使用したデプロイ
+
+[CDK](https://aws.amazon.com/cdk/) を使用して、DifyをAWSにデプロイします
+
+##### AWS
+- [@KevinZhaoによるAWS CDK](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+
+#### Alibaba Cloud
+[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
+
+#### Alibaba Cloud Data Management
+[Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/) を利用して、DifyをAlibaba Cloudへワンクリックでデプロイできます
 
 
 ## 貢献
@@ -201,7 +234,7 @@ docker compose up -d
 同時に、DifyをSNSやイベント、カンファレンスで共有してサポートしていただけると幸いです。
 
 
-> Difyを英語または中国語以外の言語に翻訳してくれる貢献者を募集しています。興味がある場合は、詳細については[i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README.md)を参照してください。また、[Discordコミュニティサーバー](https://discord.gg/8Tpq4AcN9c)の`global-users`チャンネルにコメントを残してください。
+> Difyを英語または中国語以外の言語に翻訳してくれる貢献者を募集しています。興味がある場合は、詳細については[i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)を参照してください。また、[Discordコミュニティサーバー](https://discord.gg/8Tpq4AcN9c)の`global-users`チャンネルにコメントを残してください。
 
 **貢献者**
 
@@ -211,34 +244,11 @@ docker compose up -d
 
 ## コミュニティ & お問い合わせ
 
-* [Github Discussion](https://github.com/langgenius/dify/discussions). 主に: フィードバックの共有や質問。
-* [GitHub Issues](https://github.com/langgenius/dify/issues). 主に: Dify.AIの使用中に遭遇したバグや機能提案。
-* [Email](mailto:support@dify.ai?subject=[GitHub]Questions%20About%20Dify). 主に: Dify.AIの使用に関する質問。
+* [GitHub Discussion](https://github.com/langgenius/dify/discussions). 主に: フィードバックの共有や質問。
+* [GitHub Issues](https://github.com/langgenius/dify/issues). 主に: Dify.AIを使用する際に発生するエラーや問題については、[貢献ガイド](CONTRIBUTING_JA.md)を参照してください
 * [Discord](https://discord.gg/FngNHpbcY7). 主に: アプリケーションの共有やコミュニティとの交流。
-* [Twitter](https://twitter.com/dify_ai). 主に: アプリケーションの共有やコミュニティとの交流。
+* [X(Twitter)](https://twitter.com/dify_ai). 主に: アプリケーションの共有やコミュニティとの交流。
 
-または、直接チームメンバーとミーティングをスケジュール：
-
-<table>
-  <tr>
-    <th>連絡先</th>
-    <th>目的</th>
-  </tr>
-  <tr>
-    <td><a href='https://cal.com
-
-/guchenhe/30min'>ミーティング</a></td>
-    <td>無料の30分間のミーティングをスケジュール</td>
-  </tr>
-  <tr>
-    <td><a href='mailto:support@dify.ai?subject=[GitHub]Technical%20Support'>技術サポート</a></td>
-    <td>技術的な問題やサポートに関する質問</td>
-  </tr>
-  <tr>
-    <td><a href='mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry'>営業担当</a></td>
-    <td>法人ライセンスに関するお問い合わせ</td>
-  </tr>
-</table>
 
 
 ## ライセンス

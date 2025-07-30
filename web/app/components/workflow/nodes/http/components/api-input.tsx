@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import React, { useState } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { Method } from '../types'
 import Selector from '../../_base/components/selector'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import { VarType } from '../../../types'
 import type { Var } from '../../../types'
+import cn from '@/utils/classnames'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const MethodOptions = [
   { label: 'GET', value: Method.get },
@@ -42,7 +42,7 @@ const ApiInput: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number].includes(varPayload.type)
+      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
     },
   })
 
@@ -53,9 +53,9 @@ const ApiInput: FC<Props> = ({
         onChange={onMethodChange}
         options={MethodOptions}
         trigger={
-          <div className={cn(readonly && 'cursor-pointer', 'h-8 shrink-0 flex items-center px-2.5 bg-gray-100 border-black/5 rounded-lg')} >
-            <div className='w-12 pl-0.5 leading-[18px] text-xs font-medium text-gray-900 uppercase'>{method}</div>
-            {!readonly && <ChevronDown className='ml-1 w-3.5 h-3.5 text-gray-700' />}
+          <div className={cn(readonly && 'cursor-pointer', 'flex h-8 shrink-0 items-center rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-2.5')} >
+            <div className='w-12 pl-0.5 text-xs font-medium uppercase leading-[18px] text-text-primary'>{method}</div>
+            {!readonly && <RiArrowDownSLine className='ml-1 h-3.5 w-3.5 text-text-secondary' />}
           </div>
         }
         popupClassName='top-[34px] w-[108px]'
@@ -65,7 +65,7 @@ const ApiInput: FC<Props> = ({
 
       <Input
         instanceId='http-api-url'
-        className={cn(isFocus ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'w-0 grow rounded-lg px-3 py-[6px] border')}
+        className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
         value={url}
         onChange={onUrlChange}
         readOnly={readonly}

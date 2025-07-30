@@ -1,13 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import { useState } from 'react'
-import cn from 'classnames'
+import {
+  RiCheckboxCircleLine,
+  RiErrorWarningLine,
+} from '@remixicon/react'
 import { useContext } from 'use-context-selector'
+import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import { CheckCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import type { ToolCall } from '@/models/log'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -31,7 +33,7 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
     if (time < 1)
       return `${(time * 1000).toFixed(3)} ms`
     if (time > 60)
-      return `${parseInt(Math.round(time / 60).toString())} m ${(time % 60).toFixed(3)} s`
+      return `${Number.parseInt(Math.round(time / 60).toString())} m ${(time % 60).toFixed(3)} s`
     return `${time.toFixed(3)} s`
   }
 
@@ -39,32 +41,32 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
     if (tokens < 1000)
       return tokens
     if (tokens >= 1000 && tokens < 1000000)
-      return `${parseFloat((tokens / 1000).toFixed(3))}K`
+      return `${Number.parseFloat((tokens / 1000).toFixed(3))}K`
     if (tokens >= 1000000)
-      return `${parseFloat((tokens / 1000000).toFixed(3))}M`
+      return `${Number.parseFloat((tokens / 1000000).toFixed(3))}M`
   }
 
   return (
     <div className={cn('py-1')}>
-      <div className={cn('group transition-all bg-white border border-gray-100 rounded-2xl shadow-xs hover:shadow-md')}>
+      <div className={cn('group rounded-2xl border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md')}>
         <div
           className={cn(
-            'flex items-center py-3 pl-[6px] pr-3 cursor-pointer',
+            'flex cursor-pointer items-center py-3 pl-[6px] pr-3',
             !collapseState && '!pb-2',
           )}
           onClick={() => setCollapseState(!collapseState)}
         >
           <ChevronRight
             className={cn(
-              'shrink-0 w-3 h-3 mr-1 text-gray-400 transition-all group-hover:text-gray-500',
+              'mr-1 h-3 w-3 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
               !collapseState && 'rotate-90',
             )}
           />
-          <BlockIcon className={cn('shrink-0 mr-2')} type={isLLM ? BlockEnum.LLM : BlockEnum.Tool} toolIcon={toolCall.tool_icon} />
+          <BlockIcon className={cn('mr-2 shrink-0')} type={isLLM ? BlockEnum.LLM : BlockEnum.Tool} toolIcon={toolCall.tool_icon} />
           <div className={cn(
-            'grow text-gray-700 text-[13px] leading-[16px] font-semibold truncate',
+            'grow truncate text-[13px] font-semibold leading-[16px] text-text-secondary',
           )} title={toolName}>{toolName}</div>
-          <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>
+          <div className='shrink-0 text-xs leading-[18px] text-text-tertiary'>
             {toolCall.time_cost && (
               <span>{getTime(toolCall.time_cost || 0)}</span>
             )}
@@ -73,17 +75,17 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
             )}
           </div>
           {toolCall.status === 'success' && (
-            <CheckCircle className='shrink-0 ml-2 w-3.5 h-3.5 text-[#12B76A]' />
+            <RiCheckboxCircleLine className='ml-2 h-3.5 w-3.5 shrink-0 text-[#12B76A]' />
           )}
           {toolCall.status === 'error' && (
-            <AlertCircle className='shrink-0 ml-2 w-3.5 h-3.5 text-[#F04438]' />
+            <RiErrorWarningLine className='ml-2 h-3.5 w-3.5 shrink-0 text-[#F04438]' />
           )}
         </div>
         {!collapseState && (
           <div className='pb-2'>
             <div className={cn('px-[10px] py-1')}>
               {toolCall.status === 'error' && (
-                <div className='px-3 py-[10px] bg-[#fef3f2] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] text-xs leading-[18px] text-[#d92d20] shadow-xs'>{toolCall.error}</div>
+                <div className='rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] bg-[#fef3f2] px-3 py-[10px] text-xs leading-[18px] text-[#d92d20] shadow-xs'>{toolCall.error}</div>
               )}
             </div>
             {toolCall.tool_input && (

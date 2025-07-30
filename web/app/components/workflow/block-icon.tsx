@@ -2,15 +2,21 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import { BlockEnum } from './types'
 import {
+  Agent,
   Answer,
+  Assigner,
   Code,
+  DocsExtractor,
   End,
   Home,
   Http,
   IfElse,
   Iteration,
   KnowledgeRetrieval,
+  ListFilter,
   Llm,
+  Loop,
+  LoopEnd,
   ParameterExtractor,
   QuestionClassifier,
   TemplatingTransform,
@@ -43,26 +49,40 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.TemplateTransform]: <TemplatingTransform className={className} />,
     [BlockEnum.VariableAssigner]: <VariableX className={className} />,
     [BlockEnum.VariableAggregator]: <VariableX className={className} />,
+    [BlockEnum.Assigner]: <Assigner className={className} />,
     [BlockEnum.Tool]: <VariableX className={className} />,
+    [BlockEnum.IterationStart]: <VariableX className={className} />,
     [BlockEnum.Iteration]: <Iteration className={className} />,
+    [BlockEnum.LoopStart]: <VariableX className={className} />,
+    [BlockEnum.Loop]: <Loop className={className} />,
+    [BlockEnum.LoopEnd]: <LoopEnd className={className} />,
     [BlockEnum.ParameterExtractor]: <ParameterExtractor className={className} />,
+    [BlockEnum.DocExtractor]: <DocsExtractor className={className} />,
+    [BlockEnum.ListFilter]: <ListFilter className={className} />,
+    [BlockEnum.Agent]: <Agent className={className} />,
   }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
-  [BlockEnum.Start]: 'bg-primary-500',
-  [BlockEnum.LLM]: 'bg-[#6172F3]',
-  [BlockEnum.Code]: 'bg-[#2E90FA]',
-  [BlockEnum.End]: 'bg-[#F79009]',
-  [BlockEnum.IfElse]: 'bg-[#06AED4]',
-  [BlockEnum.Iteration]: 'bg-[#06AED4]',
-  [BlockEnum.HttpRequest]: 'bg-[#875BF7]',
-  [BlockEnum.Answer]: 'bg-[#F79009]',
-  [BlockEnum.KnowledgeRetrieval]: 'bg-[#16B364]',
-  [BlockEnum.QuestionClassifier]: 'bg-[#16B364]',
-  [BlockEnum.TemplateTransform]: 'bg-[#2E90FA]',
-  [BlockEnum.VariableAssigner]: 'bg-[#2E90FA]',
-  [BlockEnum.VariableAggregator]: 'bg-[#2E90FA]',
-  [BlockEnum.ParameterExtractor]: 'bg-[#2E90FA]',
+  [BlockEnum.Start]: 'bg-util-colors-blue-brand-blue-brand-500',
+  [BlockEnum.LLM]: 'bg-util-colors-indigo-indigo-500',
+  [BlockEnum.Code]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.End]: 'bg-util-colors-warning-warning-500',
+  [BlockEnum.IfElse]: 'bg-util-colors-cyan-cyan-500',
+  [BlockEnum.Iteration]: 'bg-util-colors-cyan-cyan-500',
+  [BlockEnum.Loop]: 'bg-util-colors-cyan-cyan-500',
+  [BlockEnum.LoopEnd]: 'bg-util-colors-warning-warning-500',
+  [BlockEnum.HttpRequest]: 'bg-util-colors-violet-violet-500',
+  [BlockEnum.Answer]: 'bg-util-colors-warning-warning-500',
+  [BlockEnum.KnowledgeRetrieval]: 'bg-util-colors-green-green-500',
+  [BlockEnum.QuestionClassifier]: 'bg-util-colors-green-green-500',
+  [BlockEnum.TemplateTransform]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.VariableAssigner]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.VariableAggregator]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.Assigner]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.ParameterExtractor]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',
+  [BlockEnum.ListFilter]: 'bg-util-colors-cyan-cyan-500',
+  [BlockEnum.Agent]: 'bg-util-colors-indigo-indigo-500',
 }
 const BlockIcon: FC<BlockIconProps> = ({
   type,
@@ -91,7 +111,7 @@ const BlockIcon: FC<BlockIconProps> = ({
               typeof toolIcon === 'string'
                 ? (
                   <div
-                    className='shrink-0 w-full h-full bg-cover bg-center rounded-md'
+                    className='h-full w-full shrink-0 rounded-md bg-cover bg-center'
                     style={{
                       backgroundImage: `url(${toolIcon})`,
                     }}
@@ -99,7 +119,7 @@ const BlockIcon: FC<BlockIconProps> = ({
                 )
                 : (
                   <AppIcon
-                    className='shrink-0 !w-full !h-full'
+                    className='!h-full !w-full shrink-0'
                     size='tiny'
                     icon={toolIcon?.content}
                     background={toolIcon?.background}

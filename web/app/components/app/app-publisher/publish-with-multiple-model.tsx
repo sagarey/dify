@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiArrowDownSLine } from '@remixicon/react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import ModelIcon from '../../header/account-setting/model-provider-page/model-icon'
 import Button from '@/app/components/base/button'
@@ -9,7 +10,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useProviderContext } from '@/context/provider-context'
 import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -68,30 +68,30 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
     >
       <PortalToFollowElemTrigger className='w-full' onClick={handleToggle}>
         <Button
-          type='primary'
+          variant='primary'
           disabled={!validModelConfigs.length}
-          className='mt-3 px-3 py-0 w-full h-8 border-[0.5px] border-primary-700 rounded-lg text-[13px] font-medium'
+          className='mt-3 w-full'
         >
           {t('appDebug.operation.applyConfig')}
-          <ChevronDown className='ml-0.5 w-3 h-3' />
+          <RiArrowDownSLine className='ml-0.5 h-3 w-3' />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='mt-1 w-[288px] z-50'>
-        <div className='p-1 rounded-lg border-[0.5px] border-gray-200 shadow-lg bg-white'>
-          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>
+      <PortalToFollowElemContent className='z-50 mt-1 w-[288px]'>
+        <div className='rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg'>
+          <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>
             {t('appDebug.publishAs')}
           </div>
           {
             validModelConfigs.map((item, index) => (
               <div
                 key={item.id}
-                className='flex items-center h-8 px-3 text-sm text-gray-500 rounded-lg cursor-pointer hover:bg-gray-100'
+                className='flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-tertiary hover:bg-state-base-hover'
                 onClick={() => handleSelect(item)}
               >
-                <span className='italic min-w-[18px]'>#{index + 1}</span>
+                <span className='min-w-[18px] italic'>#{index + 1}</span>
                 <ModelIcon modelName={item.model} provider={item.providerItem} className='ml-2' />
                 <div
-                  className='ml-1 text-gray-700 truncate'
+                  className='ml-1 truncate text-text-secondary'
                   title={item.modelItem.label[language]}
                 >
                   {item.modelItem.label[language]}

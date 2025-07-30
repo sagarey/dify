@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import UpgradeBtn from '../upgrade-btn'
 import Modal from '../../base/modal'
 import Usage from './usage'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import GridMask from '@/app/components/base/grid-mask'
 
 type Props = {
@@ -27,9 +27,9 @@ const AnnotationFullModal: FC<Props> = ({
       className='!p-0'
     >
       <GridMask wrapperClassName='rounded-lg' canvasClassName='rounded-lg' gradientClassName='rounded-lg'>
-        <div className='mt-6 px-7 py-6 border-2 border-solid border-transparent rounded-lg shadow-md flex flex-col transition-all duration-200 ease-in-out cursor-pointer'>
-          <div className='flex justify-between items-center'>
-            <div className={cn(s.textGradient, 'leading-[27px] text-[18px] font-semibold')}>
+        <div className='mt-6 flex cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-7 py-6 shadow-md transition-all duration-200 ease-in-out'>
+          <div className='flex items-center justify-between'>
+            <div className={cn(s.textGradient, 'text-[18px] font-semibold leading-[27px]')}>
               <div>{t('billing.annotatedResponse.fullTipLine1')}</div>
               <div>{t('billing.annotatedResponse.fullTipLine2')}</div>
             </div>

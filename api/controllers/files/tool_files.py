@@ -1,10 +1,14 @@
+from urllib.parse import quote
+
 from flask import Response
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.files import api
+from controllers.files.error import UnsupportedFileTypeError
+from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
-from libs.exception import BaseHTTPException
+from models import db as global_db
 
 
 class ToolFilePreviewApi(Resource):
@@ -13,36 +17,41 @@ class ToolFilePreviewApi(Resource):
 
         parser = reqparse.RequestParser()
 
-        parser.add_argument('timestamp', type=str, required=True, location='args')
-        parser.add_argument('nonce', type=str, required=True, location='args')
-        parser.add_argument('sign', type=str, required=True, location='args')
+        parser.add_argument("timestamp", type=str, required=True, location="args")
+        parser.add_argument("nonce", type=str, required=True, location="args")
+        parser.add_argument("sign", type=str, required=True, location="args")
+        parser.add_argument("as_attachment", type=bool, required=False, default=False, location="args")
 
         args = parser.parse_args()
-
-        if not ToolFileManager.verify_file(file_id=file_id,
-                                            timestamp=args['timestamp'],
-                                            nonce=args['nonce'],
-                                            sign=args['sign'],
+        if not verify_tool_file_signature(
+            file_id=file_id, timestamp=args["timestamp"], nonce=args["nonce"], sign=args["sign"]
         ):
-            raise Forbidden('Invalid request.')
-        
+            raise Forbidden("Invalid request.")
+
         try:
-            result = ToolFileManager.get_file_generator_by_tool_file_id(
+            tool_file_manager = ToolFileManager(engine=global_db.engine)
+            stream, tool_file = tool_file_manager.get_file_generator_by_tool_file_id(
                 file_id,
             )
 
-            if not result:
-                raise NotFound('file is not found')
-            
-            generator, mimetype = result
+            if not stream or not tool_file:
+                raise NotFound("file is not found")
         except Exception:
             raise UnsupportedFileTypeError()
 
-        return Response(generator, mimetype=mimetype)
+        response = Response(
+            stream,
+            mimetype=tool_file.mimetype,
+            direct_passthrough=True,
+            headers={},
+        )
+        if tool_file.size > 0:
+            response.headers["Content-Length"] = str(tool_file.size)
+        if args["as_attachment"]:
+            encoded_filename = quote(tool_file.name)
+            response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
-api.add_resource(ToolFilePreviewApi, '/files/tools/<uuid:file_id>.<string:extension>')
+        return response
 
-class UnsupportedFileTypeError(BaseHTTPException):
-    error_code = 'unsupported_file_type'
-    description = "File type not allowed."
-    code = 415
+
+api.add_resource(ToolFilePreviewApi, "/files/tools/<uuid:file_id>.<string:extension>")

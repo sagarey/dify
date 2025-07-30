@@ -1,101 +1,188 @@
-from enum import Enum
-from typing import Any, Optional, Union
+import re
+from collections import defaultdict
+from collections.abc import Mapping, Sequence
+from typing import Annotated, Any, Union, cast
 
-from core.file.file_obj import FileVar
-from core.workflow.entities.node_entities import SystemVariable
+from pydantic import BaseModel, Field
 
-VariableValue = Union[str, int, float, dict, list, FileVar]
+from core.file import File, FileAttribute, file_manager
+from core.variables import Segment, SegmentGroup, Variable
+from core.variables.consts import MIN_SELECTORS_LENGTH
+from core.variables.segments import FileSegment, NoneSegment
+from core.variables.variables import VariableUnion
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.system_variable import SystemVariable
+from factories import variable_factory
 
+VariableValue = Union[str, int, float, dict, list, File]
 
-class ValueType(Enum):
-    """
-    Value Type Enum
-    """
-    STRING = "string"
-    NUMBER = "number"
-    OBJECT = "object"
-    ARRAY_STRING = "array[string]"
-    ARRAY_NUMBER = "array[number]"
-    ARRAY_OBJECT = "array[object]"
-    ARRAY_FILE = "array[file]"
-    FILE = "file"
+VARIABLE_PATTERN = re.compile(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}")
 
 
-class VariablePool:
+class VariablePool(BaseModel):
+    # Variable dictionary is a dictionary for looking up variables by their selector.
+    # The first element of the selector is the node id, it's the first-level key in the dictionary.
+    # Other elements of the selector are the keys in the second-level dictionary. To get the key, we hash the
+    # elements of the selector except the first one.
+    variable_dictionary: defaultdict[str, Annotated[dict[int, VariableUnion], Field(default_factory=dict)]] = Field(
+        description="Variables mapping",
+        default=defaultdict(dict),
+    )
 
-    def __init__(self, system_variables: dict[SystemVariable, Any],
-                 user_inputs: dict) -> None:
-        # system variables
-        # for example:
-        # {
-        #     'query': 'abc',
-        #     'files': []
-        # }
-        self.variables_mapping = {}
-        self.user_inputs = user_inputs
-        self.system_variables = system_variables
-        for system_variable, value in system_variables.items():
-            self.append_variable('sys', [system_variable.value], value)
+    # The `user_inputs` is used only when constructing the inputs for the `StartNode`. It's not used elsewhere.
+    user_inputs: Mapping[str, Any] = Field(
+        description="User inputs",
+        default_factory=dict,
+    )
+    system_variables: SystemVariable = Field(
+        description="System variables",
+    )
+    environment_variables: Sequence[VariableUnion] = Field(
+        description="Environment variables.",
+        default_factory=list,
+    )
+    conversation_variables: Sequence[VariableUnion] = Field(
+        description="Conversation variables.",
+        default_factory=list,
+    )
 
-    def append_variable(self, node_id: str, variable_key_list: list[str], value: VariableValue) -> None:
+    def model_post_init(self, context: Any, /) -> None:
+        # Create a mapping from field names to SystemVariableKey enum values
+        self._add_system_variables(self.system_variables)
+        # Add environment variables to the variable pool
+        for var in self.environment_variables:
+            self.add((ENVIRONMENT_VARIABLE_NODE_ID, var.name), var)
+        # Add conversation variables to the variable pool
+        for var in self.conversation_variables:
+            self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
+
+    def add(self, selector: Sequence[str], value: Any, /) -> None:
         """
-        Append variable
-        :param node_id: node id
-        :param variable_key_list: variable key list, like: ['result', 'text']
-        :param value: value
-        :return:
+        Adds a variable to the variable pool.
+
+        NOTE: You should not add a non-Segment value to the variable pool
+        even if it is allowed now.
+
+        Args:
+            selector (Sequence[str]): The selector for the variable.
+            value (VariableValue): The value of the variable.
+
+        Raises:
+            ValueError: If the selector is invalid.
+
+        Returns:
+            None
         """
-        if node_id not in self.variables_mapping:
-            self.variables_mapping[node_id] = {}
+        if len(selector) < MIN_SELECTORS_LENGTH:
+            raise ValueError("Invalid selector")
 
-        variable_key_list_hash = hash(tuple(variable_key_list))
+        if isinstance(value, Variable):
+            variable = value
+        elif isinstance(value, Segment):
+            variable = variable_factory.segment_to_variable(segment=value, selector=selector)
+        else:
+            segment = variable_factory.build_segment(value)
+            variable = variable_factory.segment_to_variable(segment=segment, selector=selector)
 
-        self.variables_mapping[node_id][variable_key_list_hash] = value
+        key, hash_key = self._selector_to_keys(selector)
+        # Based on the definition of `VariableUnion`,
+        # `list[Variable]` can be safely used as `list[VariableUnion]` since they are compatible.
+        self.variable_dictionary[key][hash_key] = cast(VariableUnion, variable)
 
-    def get_variable_value(self, variable_selector: list[str],
-                           target_value_type: Optional[ValueType] = None) -> Optional[VariableValue]:
+    @classmethod
+    def _selector_to_keys(cls, selector: Sequence[str]) -> tuple[str, int]:
+        return selector[0], hash(tuple(selector[1:]))
+
+    def _has(self, selector: Sequence[str]) -> bool:
+        key, hash_key = self._selector_to_keys(selector)
+        if key not in self.variable_dictionary:
+            return False
+        if hash_key not in self.variable_dictionary[key]:
+            return False
+        return True
+
+    def get(self, selector: Sequence[str], /) -> Segment | None:
         """
-        Get variable
-        :param variable_selector: include node_id and variables
-        :param target_value_type: target value type
-        :return:
-        """
-        if len(variable_selector) < 2:
-            raise ValueError('Invalid value selector')
+        Retrieves the value from the variable pool based on the given selector.
 
-        node_id = variable_selector[0]
-        if node_id not in self.variables_mapping:
+        Args:
+            selector (Sequence[str]): The selector used to identify the variable.
+
+        Returns:
+            Any: The value associated with the given selector.
+
+        Raises:
+            ValueError: If the selector is invalid.
+        """
+        if len(selector) < MIN_SELECTORS_LENGTH:
             return None
 
-        # fetch variable keys, pop node_id
-        variable_key_list = variable_selector[1:]
+        key, hash_key = self._selector_to_keys(selector)
+        value: Segment | None = self.variable_dictionary[key].get(hash_key)
 
-        variable_key_list_hash = hash(tuple(variable_key_list))
-
-        value = self.variables_mapping[node_id].get(variable_key_list_hash)
-
-        if target_value_type:
-            if target_value_type == ValueType.STRING:
-                return str(value)
-            elif target_value_type == ValueType.NUMBER:
-                return int(value)
-            elif target_value_type == ValueType.OBJECT:
-                if not isinstance(value, dict):
-                    raise ValueError('Invalid value type: object')
-            elif target_value_type in [ValueType.ARRAY_STRING,
-                                       ValueType.ARRAY_NUMBER,
-                                       ValueType.ARRAY_OBJECT,
-                                       ValueType.ARRAY_FILE]:
-                if not isinstance(value, list):
-                    raise ValueError(f'Invalid value type: {target_value_type.value}')
+        if value is None:
+            selector, attr = selector[:-1], selector[-1]
+            # Python support `attr in FileAttribute` after 3.12
+            if attr not in {item.value for item in FileAttribute}:
+                return None
+            value = self.get(selector)
+            if not isinstance(value, FileSegment | NoneSegment):
+                return None
+            if isinstance(value, FileSegment):
+                attr = FileAttribute(attr)
+                attr_value = file_manager.get_attr(file=value.value, attr=attr)
+                return variable_factory.build_segment(attr_value)
+            return value
 
         return value
 
-    def clear_node_variables(self, node_id: str) -> None:
+    def remove(self, selector: Sequence[str], /):
         """
-        Clear node variables
-        :param node_id: node id
-        :return:
+        Remove variables from the variable pool based on the given selector.
+
+        Args:
+            selector (Sequence[str]): A sequence of strings representing the selector.
+
+        Returns:
+            None
         """
-        if node_id in self.variables_mapping:
-            self.variables_mapping.pop(node_id)
+        if not selector:
+            return
+        if len(selector) == 1:
+            self.variable_dictionary[selector[0]] = {}
+            return
+        key, hash_key = self._selector_to_keys(selector)
+        self.variable_dictionary[key].pop(hash_key, None)
+
+    def convert_template(self, template: str, /):
+        parts = VARIABLE_PATTERN.split(template)
+        segments = []
+        for part in filter(lambda x: x, parts):
+            if "." in part and (variable := self.get(part.split("."))):
+                segments.append(variable)
+            else:
+                segments.append(variable_factory.build_segment(part))
+        return SegmentGroup(value=segments)
+
+    def get_file(self, selector: Sequence[str], /) -> FileSegment | None:
+        segment = self.get(selector)
+        if isinstance(segment, FileSegment):
+            return segment
+        return None
+
+    def _add_system_variables(self, system_variable: SystemVariable):
+        sys_var_mapping = system_variable.to_dict()
+        for key, value in sys_var_mapping.items():
+            if value is None:
+                continue
+            selector = (SYSTEM_VARIABLE_NODE_ID, key)
+            # If the system variable already exists, do not add it again.
+            # This ensures that we can keep the id of the system variables intact.
+            if self._has(selector):
+                continue
+            self.add(selector, value)  # type: ignore
+
+    @classmethod
+    def empty(cls) -> "VariablePool":
+        """Create an empty variable pool."""
+        return cls(system_variables=SystemVariable.empty())

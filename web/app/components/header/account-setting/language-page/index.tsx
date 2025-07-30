@@ -10,10 +10,10 @@ import { updateUserProfile } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
 import I18n from '@/context/i18n'
 import { timezones } from '@/utils/timezone'
-import { languages } from '@/i18n/language'
+import { languages } from '@/i18n-config/language'
 
 const titleClassName = `
-  mb-2 text-sm font-medium text-gray-900
+  mb-2 system-sm-semibold text-text-secondary
 `
 
 export default function LanguagePage() {

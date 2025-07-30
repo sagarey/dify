@@ -1,5 +1,6 @@
 import { del, get, patch, post } from './base'
 import type { App, AppCategory } from '@/models/explore'
+import type { AccessMode } from '@/models/access-control'
 
 export const fetchAppList = () => {
   return get<{
@@ -12,8 +13,8 @@ export const fetchAppDetail = (id: string): Promise<any> => {
   return get(`/explore/apps/${id}`)
 }
 
-export const fetchInstalledAppList = () => {
-  return get('/installed-apps')
+export const fetchInstalledAppList = (app_id?: string | null) => {
+  return get(`/installed-apps${app_id ? `?app_id=${app_id}` : ''}`)
 }
 
 export const installApp = (id: string) => {
@@ -38,4 +39,8 @@ export const updatePinStatus = (id: string, isPinned: boolean) => {
 
 export const getToolProviders = () => {
   return get('/workspaces/current/tool-providers')
+}
+
+export const getAppAccessModeByAppId = (appId: string) => {
+  return get<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
 }

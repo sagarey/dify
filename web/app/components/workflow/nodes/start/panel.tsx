@@ -40,7 +40,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-2 space-y-4'>
+      <div className='space-y-4 px-4 pb-2'>
         <Field
           title={t(`${i18nPrefix}.inputField`)}
           operations={
@@ -64,7 +64,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
                       variable: 'sys.query',
                     } as any}
                     rightContent={
-                      <div className='text-xs font-normal text-gray-500'>
+                      <div className='text-xs font-normal text-text-tertiary'>
                         String
                       </div>
                     }
@@ -73,28 +73,42 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
 
               <VarItem
                 readonly
+                showLegacyBadge={!isChatMode}
                 payload={{
                   variable: 'sys.files',
                 } as any}
                 rightContent={
-                  <div className='text-xs font-normal text-gray-500'>
+                  <div className='text-xs font-normal text-text-tertiary'>
                     Array[File]
                   </div>
                 }
               />
               {
                 isChatMode && (
-                  <VarItem
-                    readonly
-                    payload={{
-                      variable: 'sys.conversation_id',
-                    } as any}
-                    rightContent={
-                      <div className='text-xs font-normal text-gray-500'>
-                        String
-                      </div>
-                    }
-                  />
+                  <>
+                    <VarItem
+                      readonly
+                      payload={{
+                        variable: 'sys.dialogue_count',
+                      } as any}
+                      rightContent={
+                        <div className='text-xs font-normal text-text-tertiary'>
+                          Number
+                        </div>
+                      }
+                    />
+                    <VarItem
+                      readonly
+                      payload={{
+                        variable: 'sys.conversation_id',
+                      } as any}
+                      rightContent={
+                        <div className='text-xs font-normal text-text-tertiary'>
+                          String
+                        </div>
+                      }
+                    />
+                  </>
                 )
               }
               <VarItem
@@ -103,7 +117,40 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
                   variable: 'sys.user_id',
                 } as any}
                 rightContent={
-                  <div className='text-xs font-normal text-gray-500'>
+                  <div className='text-xs font-normal text-text-tertiary'>
+                    String
+                  </div>
+                }
+              />
+              <VarItem
+                readonly
+                payload={{
+                  variable: 'sys.app_id',
+                } as any}
+                rightContent={
+                  <div className='text-xs font-normal text-text-tertiary'>
+                    String
+                  </div>
+                }
+              />
+              <VarItem
+                readonly
+                payload={{
+                  variable: 'sys.workflow_id',
+                } as any}
+                rightContent={
+                  <div className='text-xs font-normal text-text-tertiary'>
+                    String
+                  </div>
+                }
+              />
+              <VarItem
+                readonly
+                payload={{
+                  variable: 'sys.workflow_run_id',
+                } as any}
+                rightContent={
+                  <div className='text-xs font-normal text-text-tertiary'>
                     String
                   </div>
                 }
@@ -117,6 +164,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
       {isShowAddVarModal && (
         <ConfigVarModal
           isCreate
+          supportFile
           isShow={isShowAddVarModal}
           onClose={hideAddVarModal}
           onConfirm={handleAddVarConfirm}

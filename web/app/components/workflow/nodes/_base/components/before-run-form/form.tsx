@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import produce from 'immer'
-import cn from 'classnames'
 import type { InputVar } from '../../../../types'
 import FormItem from './form-item'
+import cn from '@/utils/classnames'
 import { InputVarType } from '@/app/components/workflow/types'
 import AddButton from '@/app/components/base/button/add-button'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
@@ -24,19 +24,51 @@ const Form: FC<Props> = ({
   values,
   onChange,
 }) => {
+  const mapKeysWithSameValueSelector = useMemo(() => {
+    const keysWithSameValueSelector = (key: string) => {
+      const targetValueSelector = inputs.find(
+        item => item.variable === key,
+      )?.value_selector
+      if (!targetValueSelector)
+        return [key]
+
+      const result: string[] = []
+      inputs.forEach((item) => {
+        if (item.value_selector?.join('.') === targetValueSelector.join('.'))
+          result.push(item.variable)
+      })
+      return result
+    }
+
+    const m = new Map()
+    for (const input of inputs)
+      m.set(input.variable, keysWithSameValueSelector(input.variable))
+
+    return m
+  }, [inputs])
+  const valuesRef = useRef(values)
+  useEffect(() => {
+    valuesRef.current = values
+  }, [values])
   const handleChange = useCallback((key: string) => {
+    const mKeys = mapKeysWithSameValueSelector.get(key) ?? [key]
     return (value: any) => {
-      const newValues = produce(values, (draft) => {
-        draft[key] = value
+      const newValues = produce(valuesRef.current, (draft) => {
+        for (const k of mKeys)
+          draft[k] = value
       })
       onChange(newValues)
     }
-  }, [values, onChange])
+  }, [valuesRef, onChange, mapKeysWithSameValueSelector])
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(inputs[0]?.type)
+  const isIteratorItemFile = inputs[0]?.type === InputVarType.iterator && inputs[0]?.isFileItem
+
   const isContext = inputs[0]?.type === InputVarType.contexts
   const handleAddContext = useCallback(() => {
     const newValues = produce(values, (draft: any) => {
       const key = inputs[0].variable
+      if (!draft[key])
+        draft[key] = []
       draft[key].push(isContext ? RETRIEVAL_OUTPUT_STRUCT : '')
     })
     onChange(newValues)
@@ -46,8 +78,8 @@ const Form: FC<Props> = ({
     <div className={cn(className, 'space-y-2')}>
       {label && (
         <div className='mb-1 flex items-center justify-between'>
-          <div className='flex items-center h-6 text-xs font-medium text-gray-500 uppercase'>{label}</div>
-          {isArrayLikeType && (
+          <div className='system-xs-medium-uppercase flex h-6 items-center text-text-tertiary'>{label}</div>
+          {isArrayLikeType && !isIteratorItemFile && (
             <AddButton onClick={handleAddContext} />
           )}
         </div>
@@ -55,6 +87,7 @@ const Form: FC<Props> = ({
       {inputs.map((input, index) => {
         return (
           <FormItem
+            inStepRun
             key={index}
             payload={input}
             value={values[input.variable]}

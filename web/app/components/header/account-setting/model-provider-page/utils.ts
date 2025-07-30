@@ -18,9 +18,7 @@ import {
   validateModelProvider,
 } from '@/service/common'
 
-export const MODEL_PROVIDER_QUOTA_GET_PAID = ['anthropic', 'openai', 'azure_openai']
-
-export const DEFAULT_BACKGROUND_COLOR = '#F3F4F6'
+export const MODEL_PROVIDER_QUOTA_GET_PAID = ['langgenius/anthropic/anthropic', 'langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']
 
 export const isNullOrUndefined = (value: any) => {
   return value === undefined || value === null
@@ -56,14 +54,14 @@ export const validateCredentials = async (predefined: boolean, provider: string,
   }
 }
 
-export const validateLoadBalancingCredentials = async (predefined: boolean, provider: string, v: FormValue): Promise<{
+export const validateLoadBalancingCredentials = async (predefined: boolean, provider: string, v: FormValue, id?: string): Promise<{
   status: ValidatedStatus
   message?: string
 }> => {
   const { __model_name, __model_type, ...credentials } = v
   try {
     const res = await validateModelLoadBalancingCredentials({
-      url: `/workspaces/current/model-providers/${provider}/models/load-balancing-configs/credentials-validate`,
+      url: `/workspaces/current/model-providers/${provider}/models/load-balancing-configs/${id ? `${id}/` : ''}credentials-validate`,
       body: {
         model: __model_name,
         model_type: __model_type,

@@ -198,6 +198,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'Завантаження файлу',
+      description: 'Поле вводу чату дозволяє завантажувати зображення, документи та інші файли.',
+      supportedTypes: 'Підтримувані типи файлів',
+      numberLimit: 'Максимальна кількість завантажень',
+      modalTitle: 'Налаштування завантаження файлів',
+    },
+    imageUpload: {
+      title: 'Завантаження зображення',
+      description: 'Дозволити завантаження зображень.',
+      supportedTypes: 'Підтримувані типи файлів',
+      numberLimit: 'Максимальна кількість завантажень',
+      modalTitle: 'Налаштування завантаження зображень',
+    },
+    bar: {
+      empty: 'Увімкніть функції для покращення користувацького досвіду веб-додатка',
+      enableText: 'Функції увімкнено',
+      manage: 'Керувати',
+    },
+    documentUpload: {
+      title: 'Документ',
+      description: 'Увімкнення документа дозволить моделі приймати документи та відповідати на запитання про них.',
+    },
+    audioUpload: {
+      title: 'Аудіо',
+      description: 'Увімкнення аудіо дозволить моделі обробляти аудіофайли для транскрипції та аналізу.',
+    },
   },
   automatic: {
     title: 'Автоматизована оркестрація застосунків',
@@ -248,18 +275,18 @@ const translation = {
     typeSelect: 'Вибрати', // Select
   },
   varKeyError: {
-    canNoBeEmpty: 'Ключ змінної не може бути порожнім', // Variable key can not be empty
-    tooLong: 'Ключ змінної: {{key}} занадто довгий. Не може бути більше 30 символів', // Variable key: {{key}} too length. Can not be longer then 30 characters
-    notValid: 'Ключ змінної: {{key}} недійсний. Може містити лише літери, цифри та підкреслення', // Variable key: {{key}} is invalid. Can only contain letters, numbers, and underscores
-    notStartWithNumber: 'Ключ змінної: {{key}} не може починатися з цифри', // Variable key: {{key}} can not start with a number
-    keyAlreadyExists: 'Ключ змінної: :{{key}} вже існує', // Variable key: :{{key}} already exists
+    canNoBeEmpty: 'Потрібен {{key}}', // Variable key can not be empty
+    tooLong: '{{key}} занадто довгий. Не може бути більше 30 символів', // Variable key: {{key}} too length. Can not be longer then 30 characters
+    notValid: '{{key}} недійсний. Може містити лише літери, цифри та підкреслення', // Variable key: {{key}} is invalid. Can only contain letters, numbers, and underscores
+    notStartWithNumber: '{{key}} не може починатися з цифри', // Variable key: {{key}} can not start with a number
+    keyAlreadyExists: ':{{key}} вже існує', // Variable key: :{{key}} already exists
   },
   otherError: {
     promptNoBeEmpty: 'Команда не може бути порожньою', // Prompt can not be empty
     historyNoBeEmpty: 'Історію розмови необхідно встановити у підказці', // Conversation history must be set in the prompt
     queryNoBeEmpty: 'Запит має бути встановлений у підказці', // Query must be set in the prompt
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Додати Поле Введення',
     'editModalTitle': 'Редагувати Поле Введення',
     'description': 'Налаштування для змінної {{varName}}',
@@ -279,13 +306,16 @@ const translation = {
     'labelName': 'Назва мітки',
     'inputPlaceholder': 'Будь ласка, введіть',
     'required': 'Обов\'язково',
+    'hide': 'Приховати',
     'errorMsg': {
-      varNameRequired: 'Потрібно вказати назву змінної',
       labelNameRequired: 'Потрібно вказати назву мітки',
       varNameCanBeRepeat: 'Назва змінної не може повторюватися',
       atLeastOneOption: 'Потрібно щонайменше одну опцію',
       optionRepeat: 'Є повторні опції',
     },
+    'defaultValue': 'Значення за замовчуванням',
+    'noDefaultValue': 'Без значення за замовчуванням',
+    'selectDefaultValue': 'Обрати значення за замовчуванням',
   },
   vision: {
     name: 'Зображення', // Vision
@@ -316,6 +346,9 @@ const translation = {
       language: 'Мова', // Language
       resolutionTooltip: 'Мовна підтримка для синтезу мовлення.', // Text-to-speech voice support language。
       voice: 'Голос', // Voice
+      autoPlay: 'Автоматичне відтворення',
+      autoPlayEnabled: 'ВІДЧИНЕНО',
+      autoPlayDisabled: 'закриття',
     },
   },
   openingStatement: {
@@ -324,6 +357,7 @@ const translation = {
     writeOpener: 'Напишіть вступне повідомлення', // Write opener
     placeholder: 'Напишіть тут своє вступне повідомлення, ви можете використовувати змінні, спробуйте ввести {{variable}}.', // Write your opener message here...
     openingQuestion: 'Відкриваючі питання', // Opening Questions
+    openingQuestionPlaceholder: 'Ви можете використовувати змінні, спробуйте ввести {{variable}}.',
     noDataPlaceHolder: 'Початок розмови з користувачем може допомогти ШІ встановити більш тісний зв’язок з ним у розмовних застосунках.', // ... conversational applications.
     varTip: 'Ви можете використовувати змінні, спробуйте ввести {{variable}}', // You can use variables, try type {{variable}}
     tooShort: 'Для створення вступних зауважень для розмови потрібно принаймні 20 слів вступного запиту.', // ... are required to generate an opening remarks for the conversation.

@@ -1,158 +1,165 @@
 import logging
 import time
+from typing import Any
 
-import numpy as np
-from sklearn.manifold import TSNE
-
-from core.embedding.cached_embedding import CacheEmbedding
-from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
-from core.rag.datasource.entity.embedding import Embeddings
+from core.app.app_config.entities import ModelConfig
+from core.model_runtime.entities import LLMMode
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from models.account import Account
-from models.dataset import Dataset, DatasetQuery, DocumentSegment
+from models.dataset import Dataset, DatasetQuery
 
 default_retrieval_model = {
-    'search_method': 'semantic_search',
-    'reranking_enable': False,
-    'reranking_model': {
-        'reranking_provider_name': '',
-        'reranking_model_name': ''
-    },
-    'top_k': 2,
-    'score_threshold_enabled': False
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "reranking_enable": False,
+    "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
+    "top_k": 2,
+    "score_threshold_enabled": False,
 }
 
 
 class HitTestingService:
     @classmethod
-    def retrieve(cls, dataset: Dataset, query: str, account: Account, retrieval_model: dict, limit: int = 10) -> dict:
-        if dataset.available_document_count == 0 or dataset.available_segment_count == 0:
-            return {
-                "query": {
-                    "content": query,
-                    "tsne_position": {'x': 0, 'y': 0},
-                },
-                "records": []
-            }
-
+    def retrieve(
+        cls,
+        dataset: Dataset,
+        query: str,
+        account: Account,
+        retrieval_model: Any,  # FIXME drop this any
+        external_retrieval_model: dict,
+        limit: int = 10,
+    ) -> dict:
         start = time.perf_counter()
 
         # get retrieval model , if the model is not setting , using default
         if not retrieval_model:
-            retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+            retrieval_model = dataset.retrieval_model or default_retrieval_model
+        document_ids_filter = None
+        metadata_filtering_conditions = retrieval_model.get("metadata_filtering_conditions", {})
+        if metadata_filtering_conditions:
+            dataset_retrieval = DatasetRetrieval()
 
-        # get embedding model
-        model_manager = ModelManager()
-        embedding_model = model_manager.get_model_instance(
-            tenant_id=dataset.tenant_id,
-            model_type=ModelType.TEXT_EMBEDDING,
-            provider=dataset.embedding_model_provider,
-            model=dataset.embedding_model
+            from core.app.app_config.entities import MetadataFilteringCondition
+
+            metadata_filtering_conditions = MetadataFilteringCondition(**metadata_filtering_conditions)
+
+            metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
+                dataset_ids=[dataset.id],
+                query=query,
+                metadata_filtering_mode="manual",
+                metadata_filtering_conditions=metadata_filtering_conditions,
+                inputs={},
+                tenant_id="",
+                user_id="",
+                metadata_model_config=ModelConfig(provider="", name="", mode=LLMMode.CHAT, completion_params={}),
+            )
+            if metadata_filter_document_ids:
+                document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
+            if metadata_condition and not document_ids_filter:
+                return cls.compact_retrieve_response(query, [])
+        all_documents = RetrievalService.retrieve(
+            retrieval_method=retrieval_model.get("search_method", "semantic_search"),
+            dataset_id=dataset.id,
+            query=query,
+            top_k=retrieval_model.get("top_k", 2),
+            score_threshold=retrieval_model.get("score_threshold", 0.0)
+            if retrieval_model["score_threshold_enabled"]
+            else 0.0,
+            reranking_model=retrieval_model.get("reranking_model", None)
+            if retrieval_model["reranking_enable"]
+            else None,
+            reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
+            weights=retrieval_model.get("weights", None),
+            document_ids_filter=document_ids_filter,
         )
 
-        embeddings = CacheEmbedding(embedding_model)
-
-        all_documents = RetrievalService.retrieve(retrival_method=retrieval_model['search_method'],
-                                                  dataset_id=dataset.id,
-                                                  query=query,
-                                                  top_k=retrieval_model['top_k'],
-                                                  score_threshold=retrieval_model['score_threshold']
-                                                  if retrieval_model['score_threshold_enabled'] else None,
-                                                  reranking_model=retrieval_model['reranking_model']
-                                                  if retrieval_model['reranking_enable'] else None
-                                                  )
-
         end = time.perf_counter()
-        logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")
+        logging.debug("Hit testing retrieve in %s seconds", end - start)
 
         dataset_query = DatasetQuery(
-            dataset_id=dataset.id,
-            content=query,
-            source='hit_testing',
-            created_by_role='account',
-            created_by=account.id
+            dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
         )
 
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_retrieve_response(dataset, embeddings, query, all_documents)
+        return cls.compact_retrieve_response(query, all_documents)  # type: ignore
 
     @classmethod
-    def compact_retrieve_response(cls, dataset: Dataset, embeddings: Embeddings, query: str, documents: list[Document]):
-        text_embeddings = [
-            embeddings.embed_query(query)
-        ]
-
-        text_embeddings.extend(embeddings.embed_documents([document.page_content for document in documents]))
-
-        tsne_position_data = cls.get_tsne_positions_from_embeddings(text_embeddings)
-
-        query_position = tsne_position_data.pop(0)
-
-        i = 0
-        records = []
-        for document in documents:
-            index_node_id = document.metadata['doc_id']
-
-            segment = db.session.query(DocumentSegment).filter(
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.enabled == True,
-                DocumentSegment.status == 'completed',
-                DocumentSegment.index_node_id == index_node_id
-            ).first()
-
-            if not segment:
-                i += 1
-                continue
-
-            record = {
-                "segment": segment,
-                "score": document.metadata.get('score', None),
-                "tsne_position": tsne_position_data[i]
+    def external_retrieve(
+        cls,
+        dataset: Dataset,
+        query: str,
+        account: Account,
+        external_retrieval_model: dict,
+        metadata_filtering_conditions: dict,
+    ) -> dict:
+        if dataset.provider != "external":
+            return {
+                "query": {"content": query},
+                "records": [],
             }
 
-            records.append(record)
+        start = time.perf_counter()
 
-            i += 1
+        all_documents = RetrievalService.external_retrieve(
+            dataset_id=dataset.id,
+            query=cls.escape_query_for_search(query),
+            external_retrieval_model=external_retrieval_model,
+            metadata_filtering_conditions=metadata_filtering_conditions,
+        )
+
+        end = time.perf_counter()
+        logging.debug("External knowledge hit testing retrieve in %s seconds", end - start)
+
+        dataset_query = DatasetQuery(
+            dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
+        )
+
+        db.session.add(dataset_query)
+        db.session.commit()
+
+        return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
+
+    @classmethod
+    def compact_retrieve_response(cls, query: str, documents: list[Document]) -> dict[Any, Any]:
+        records = RetrievalService.format_retrieval_documents(documents)
 
         return {
             "query": {
                 "content": query,
-                "tsne_position": query_position,
             },
-            "records": records
+            "records": [record.model_dump() for record in records],
         }
 
     @classmethod
-    def get_tsne_positions_from_embeddings(cls, embeddings: list):
-        embedding_length = len(embeddings)
-        if embedding_length <= 1:
-            return [{'x': 0, 'y': 0}]
-
-        noise = np.random.normal(0, 1e-4, np.array(embeddings).shape)
-        concatenate_data = np.array(embeddings) + noise
-        concatenate_data = concatenate_data.reshape(embedding_length, -1)
-
-        perplexity = embedding_length / 2 + 1
-        if perplexity >= embedding_length:
-            perplexity = max(embedding_length - 1, 1)
-
-        tsne = TSNE(n_components=2, perplexity=perplexity, early_exaggeration=12.0)
-        data_tsne = tsne.fit_transform(concatenate_data)
-
-        tsne_position_data = []
-        for i in range(len(data_tsne)):
-            tsne_position_data.append({'x': float(data_tsne[i][0]), 'y': float(data_tsne[i][1])})
-
-        return tsne_position_data
+    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list) -> dict[Any, Any]:
+        records = []
+        if dataset.provider == "external":
+            for document in documents:
+                record = {
+                    "content": document.get("content", None),
+                    "title": document.get("title", None),
+                    "score": document.get("score", None),
+                    "metadata": document.get("metadata", None),
+                }
+                records.append(record)
+            return {
+                "query": {"content": query},
+                "records": records,
+            }
+        return {"query": {"content": query}, "records": []}
 
     @classmethod
     def hit_testing_args_check(cls, args):
-        query = args['query']
+        query = args["query"]
 
         if not query or len(query) > 250:
-            raise ValueError('Query is required and cannot exceed 250 characters')
+            raise ValueError("Query is required and cannot exceed 250 characters")
+
+    @staticmethod
+    def escape_query_for_search(query: str) -> str:
+        return query.replace('"', '\\"')

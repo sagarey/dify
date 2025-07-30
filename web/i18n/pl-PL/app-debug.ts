@@ -214,6 +214,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'Przesyłanie plików',
+      description: 'Pole wprowadzania czatu umożliwia przesyłanie obrazów, dokumentów i innych plików.',
+      supportedTypes: 'Obsługiwane typy plików',
+      numberLimit: 'Maksymalna liczba przesłanych plików',
+      modalTitle: 'Ustawienia przesyłania plików',
+    },
+    imageUpload: {
+      title: 'Przesyłanie obrazów',
+      description: 'Umożliwia przesyłanie obrazów.',
+      supportedTypes: 'Obsługiwane typy plików',
+      numberLimit: 'Maksymalna liczba przesłanych plików',
+      modalTitle: 'Ustawienia przesyłania obrazów',
+    },
+    bar: {
+      empty: 'Włącz funkcje aby poprawić doświadczenie użytkownika aplikacji webowej',
+      enableText: 'Funkcje włączone',
+      manage: 'Zarządzaj',
+    },
+    documentUpload: {
+      title: 'Dokument',
+      description: 'Włączenie Dokumentu pozwoli modelowi na przyjmowanie dokumentów i odpowiadanie na pytania o nich.',
+    },
+    audioUpload: {
+      title: 'Dźwięk',
+      description: 'Włączenie Dźwięku pozwoli modelowi na przetwarzanie plików audio do transkrypcji i analizy.',
+    },
   },
   automatic: {
     title: 'Zautomatyzowana orkiestracja aplikacji',
@@ -275,21 +302,21 @@ const translation = {
     typeSelect: 'Wybierz',
   },
   varKeyError: {
-    canNoBeEmpty: 'Klucz zmiennej nie może być pusty',
+    canNoBeEmpty: '{{klucz}} jest wymagany',
     tooLong:
-      'Klucz zmiennej: {{key}} za długi. Nie może być dłuższy niż 30 znaków',
+      '{{key}} za długi. Nie może być dłuższy niż 30 znaków',
     notValid:
-      'Klucz zmiennej: {{key}} jest nieprawidłowy. Może zawierać tylko litery, cyfry i podkreślenia',
+      '{{key}} jest nieprawidłowy. Może zawierać tylko litery, cyfry i podkreślenia',
     notStartWithNumber:
-      'Klucz zmiennej: {{key}} nie może zaczynać się od cyfry',
-    keyAlreadyExists: 'Klucz zmiennej: :{{key}} już istnieje',
+      '{{key}} nie może zaczynać się od cyfry',
+    keyAlreadyExists: '{{key}} już istnieje',
   },
   otherError: {
     promptNoBeEmpty: 'Monit nie może być pusty',
     historyNoBeEmpty: 'Historia konwersacji musi być ustawiona w monicie',
     queryNoBeEmpty: 'Zapytanie musi być ustawione w monicie',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Dodaj Pole Wejściowe',
     'editModalTitle': 'Edytuj Pole Wejściowe',
     'description': 'Ustawienia dla zmiennej {{varName}}',
@@ -309,13 +336,16 @@ const translation = {
     'labelName': 'Nazwa etykiety',
     'inputPlaceholder': 'Proszę wpisać',
     'required': 'Wymagane',
+    'hide': 'Ukryj',
     'errorMsg': {
-      varNameRequired: 'Wymagana nazwa zmiennej',
       labelNameRequired: 'Wymagana nazwa etykiety',
       varNameCanBeRepeat: 'Nazwa zmiennej nie może się powtarzać',
       atLeastOneOption: 'Wymagana jest co najmniej jedna opcja',
       optionRepeat: 'Powtarzają się opcje',
     },
+    'defaultValue': 'Wartość domyślna',
+    'noDefaultValue': 'Brak wartości domyślnej',
+    'selectDefaultValue': 'Wybierz wartość domyślną',
   },
   vision: {
     name: 'Wizja',
@@ -347,15 +377,19 @@ const translation = {
       language: 'Język',
       resolutionTooltip: 'Wsparcie językowe głosu tekstu na mowę.',
       voice: 'Głos',
+      autoPlay: 'Automatyczne odtwarzanie',
+      autoPlayEnabled: 'włączyć coś',
+      autoPlayDisabled: 'zamknięcie',
     },
   },
   openingStatement: {
     title: 'Wstęp do rozmowy',
     add: 'Dodaj',
-    writeOpner: 'Napisz wstęp',
+    writeOpener: 'Napisz wstęp',
     placeholder:
       'Tutaj napisz swoją wiadomość wprowadzającą, możesz użyć zmiennych, spróbuj wpisać {{variable}}.',
     openingQuestion: 'Pytania otwierające',
+    openingQuestionPlaceholder: 'Możesz używać zmiennych, spróbuj wpisać {{variable}}.',
     noDataPlaceHolder:
       'Rozpoczynanie rozmowy z użytkownikiem może pomóc AI nawiązać bliższe połączenie z nim w aplikacjach konwersacyjnych.',
     varTip: 'Możesz używać zmiennych, spróbuj wpisać {{variable}}',

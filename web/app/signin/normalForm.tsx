@@ -1,311 +1,211 @@
-'use client'
-import React, { useEffect, useReducer, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
-import classNames from 'classnames'
-import useSWR from 'swr'
 import Link from 'next/link'
-import Toast from '../components/base/toast'
-import style from './page.module.css'
-import { IS_CE_EDITION, SUPPORT_MAIL_LOGIN, apiPrefix } from '@/config'
-import Button from '@/app/components/base/button'
-import { login, oauth } from '@/service/common'
-import { getPurifyHref } from '@/utils'
-const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
-
-type IState = {
-  formValid: boolean
-  github: boolean
-  google: boolean
-}
-
-type IAction = {
-  type: 'login' | 'login_failed' | 'github_login' | 'github_login_failed' | 'google_login' | 'google_login_failed'
-}
-
-function reducer(state: IState, action: IAction) {
-  switch (action.type) {
-    case 'login':
-      return {
-        ...state,
-        formValid: true,
-      }
-    case 'login_failed':
-      return {
-        ...state,
-        formValid: true,
-      }
-    case 'github_login':
-      return {
-        ...state,
-        github: true,
-      }
-    case 'github_login_failed':
-      return {
-        ...state,
-        github: false,
-      }
-    case 'google_login':
-      return {
-        ...state,
-        google: true,
-      }
-    case 'google_login_failed':
-      return {
-        ...state,
-        google: false,
-      }
-    default:
-      throw new Error('Unknown action.')
-  }
-}
+import { useRouter, useSearchParams } from 'next/navigation'
+import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
+import Loading from '../components/base/loading'
+import MailAndCodeAuth from './components/mail-and-code-auth'
+import MailAndPasswordAuth from './components/mail-and-password-auth'
+import SocialAuth from './components/social-auth'
+import SSOAuth from './components/sso-auth'
+import cn from '@/utils/classnames'
+import { invitationCheck } from '@/service/common'
+import { LicenseStatus } from '@/types/feature'
+import Toast from '@/app/components/base/toast'
+import { IS_CE_EDITION } from '@/config'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const NormalForm = () => {
   const { t } = useTranslation()
-  const useEmailLogin = IS_CE_EDITION || SUPPORT_MAIL_LOGIN
-
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
+  const refreshToken = decodeURIComponent(searchParams.get('refresh_token') || '')
+  const message = decodeURIComponent(searchParams.get('message') || '')
+  const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
+  const [isLoading, setIsLoading] = useState(true)
+  const { systemFeatures } = useGlobalPublicStore()
+  const [authType, updateAuthType] = useState<'code' | 'password'>('password')
+  const [showORLine, setShowORLine] = useState(false)
+  const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
+  const [workspaceName, setWorkSpaceName] = useState('')
 
-  const [state, dispatch] = useReducer(reducer, {
-    formValid: false,
-    github: false,
-    google: false,
-  })
+  const isInviteLink = Boolean(invite_token && invite_token !== 'null')
 
-  const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-
-  const [isLoading, setIsLoading] = useState(false)
-  const handleEmailPasswordLogin = async () => {
-    if (!validEmailReg.test(email)) {
-      Toast.notify({
-        type: 'error',
-        message: t('login.error.emailInValid'),
-      })
-      return
-    }
+  const init = useCallback(async () => {
     try {
-      setIsLoading(true)
-      const res = await login({
-        url: '/login',
-        body: {
-          email,
-          password,
-          remember_me: true,
-        },
-      })
-      if (res.result === 'success') {
-        localStorage.setItem('console_token', res.data)
+      if (consoleToken && refreshToken) {
+        localStorage.setItem('console_token', consoleToken)
+        localStorage.setItem('refresh_token', refreshToken)
         router.replace('/apps')
+        return
       }
-      else {
+
+      if (message) {
         Toast.notify({
           type: 'error',
-          message: res.data,
+          message,
         })
       }
+      setAllMethodsAreDisabled(!systemFeatures.enable_social_oauth_login && !systemFeatures.enable_email_code_login && !systemFeatures.enable_email_password_login && !systemFeatures.sso_enforced_for_signin)
+      setShowORLine((systemFeatures.enable_social_oauth_login || systemFeatures.sso_enforced_for_signin) && (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login))
+      updateAuthType(systemFeatures.enable_email_password_login ? 'password' : 'code')
+      if (isInviteLink) {
+        const checkRes = await invitationCheck({
+          url: '/activate/check',
+          params: {
+            token: invite_token,
+          },
+        })
+        setWorkSpaceName(checkRes?.data?.workspace_name || '')
+      }
     }
-    finally {
-      setIsLoading(false)
+    catch (error) {
+      console.error(error)
+      setAllMethodsAreDisabled(true)
     }
+    finally { setIsLoading(false) }
+  }, [consoleToken, refreshToken, message, router, invite_token, isInviteLink, systemFeatures])
+  useEffect(() => {
+    init()
+  }, [init])
+  if (isLoading || consoleToken) {
+    return <div className={
+      cn(
+        'flex w-full grow flex-col items-center justify-center',
+        'px-6',
+        'md:px-[108px]',
+      )
+    }>
+      <Loading type='area' />
+    </div>
   }
-
-  const { data: github, error: github_error } = useSWR(state.github
-    ? ({
-      url: '/oauth/login/github',
-      // params: {
-      //   provider: 'github',
-      // },
-    })
-    : null, oauth)
-
-  const { data: google, error: google_error } = useSWR(state.google
-    ? ({
-      url: '/oauth/login/google',
-      // params: {
-      //   provider: 'google',
-      // },
-    })
-    : null, oauth)
-
-  useEffect(() => {
-    if (github_error !== undefined)
-      dispatch({ type: 'github_login_failed' })
-    if (github)
-      window.location.href = github.redirect_url
-  }, [github, github_error])
-
-  useEffect(() => {
-    if (google_error !== undefined)
-      dispatch({ type: 'google_login_failed' })
-    if (google)
-      window.location.href = google.redirect_url
-  }, [google, google_error])
+  if (systemFeatures.license?.status === LicenseStatus.LOST) {
+    return <div className='mx-auto mt-8 w-full'>
+      <div className='relative'>
+        <div className="rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
+          <div className='shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow'>
+            <RiContractLine className='h-5 w-5' />
+            <RiErrorWarningFill className='absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary' />
+          </div>
+          <p className='system-sm-medium text-text-primary'>{t('login.licenseLost')}</p>
+          <p className='system-xs-regular mt-1 text-text-tertiary'>{t('login.licenseLostTip')}</p>
+        </div>
+      </div>
+    </div>
+  }
+  if (systemFeatures.license?.status === LicenseStatus.EXPIRED) {
+    return <div className='mx-auto mt-8 w-full'>
+      <div className='relative'>
+        <div className="rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
+          <div className='shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow'>
+            <RiContractLine className='h-5 w-5' />
+            <RiErrorWarningFill className='absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary' />
+          </div>
+          <p className='system-sm-medium text-text-primary'>{t('login.licenseExpired')}</p>
+          <p className='system-xs-regular mt-1 text-text-tertiary'>{t('login.licenseExpiredTip')}</p>
+        </div>
+      </div>
+    </div>
+  }
+  if (systemFeatures.license?.status === LicenseStatus.INACTIVE) {
+    return <div className='mx-auto mt-8 w-full'>
+      <div className='relative'>
+        <div className="rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
+          <div className='shadows-shadow-lg relative mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow'>
+            <RiContractLine className='h-5 w-5' />
+            <RiErrorWarningFill className='absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary' />
+          </div>
+          <p className='system-sm-medium text-text-primary'>{t('login.licenseInactive')}</p>
+          <p className='system-xs-regular mt-1 text-text-tertiary'>{t('login.licenseInactiveTip')}</p>
+        </div>
+      </div>
+    </div>
+  }
 
   return (
     <>
-      <div className="w-full mx-auto">
-        <h2 className="text-[32px] font-bold text-gray-900">{t('login.pageTitle')}</h2>
-        <p className='mt-1 text-sm text-gray-600'>{t('login.welcome')}</p>
-      </div>
-
-      <div className="w-full mx-auto mt-8">
-        <div className="bg-white ">
-          {!useEmailLogin && (
-            <div className="flex flex-col gap-3 mt-6">
-              <div className='w-full'>
-                <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
-                  <Button
-                    type='default'
-                    disabled={isLoading}
-                    className='w-full hover:!bg-gray-50 !text-sm !font-medium'
-                  >
-                    <>
-                      <span className={
-                        classNames(
-                          style.githubIcon,
-                          'w-5 h-5 mr-2',
-                        )
-                      } />
-                      <span className="truncate text-gray-800">{t('login.withGitHub')}</span>
-                    </>
-                  </Button>
-                </a>
-              </div>
-              <div className='w-full'>
-                <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
-                  <Button
-                    type='default'
-                    disabled={isLoading}
-                    className='w-full hover:!bg-gray-50 !text-sm !font-medium'
-                  >
-                    <>
-                      <span className={
-                        classNames(
-                          style.googleIcon,
-                          'w-5 h-5 mr-2',
-                        )
-                      } />
-                      <span className="truncate text-gray-800">{t('login.withGoogle')}</span>
-                    </>
-                  </Button>
-                </a>
-              </div>
-            </div>
-          )}
-
-          {
-            useEmailLogin && <>
-              {/* <div className="relative mt-6">
-                <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 text-gray-300 bg-white">OR</span>
-                </div>
-              </div> */}
-
-              <form onSubmit={() => { }}>
-                <div className='mb-5'>
-                  <label htmlFor="email" className="my-2 block text-sm font-medium text-gray-900">
-                    {t('login.email')}
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      placeholder={t('login.emailPlaceholder') || ''}
-                      className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
-                    />
-                  </div>
-                </div>
-
-                <div className='mb-4'>
-                  <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
-                    <span>{t('login.password')}</span>
-                    {/* <Tooltip
-                      selector='forget-password'
-                      htmlContent={
-                        <div>
-                          <div className='font-medium'>{t('login.forget')}</div>
-                          <div className='font-medium text-gray-500'>
-                            <code>
-                              sudo rm -rf /
-                            </code>
-                          </div>
-                        </div>
-                      }
-                    >
-                      <span className='cursor-pointer text-primary-600'>{t('login.forget')}</span>
-                    </Tooltip> */}
-                  </label>
-                  <div className="relative mt-1">
-                    <input
-                      id="password"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter')
-                          handleEmailPasswordLogin()
-                      }}
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      placeholder={t('login.passwordPlaceholder') || ''}
-                      className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
-                      >
-                        {showPassword ? '👀' : '😝'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className='mb-2'>
-                  <Button
-                    tabIndex={0}
-                    type='primary'
-                    onClick={handleEmailPasswordLogin}
-                    disabled={isLoading}
-                    className="w-full !fone-medium !text-sm"
-                  >{t('login.signBtn')}</Button>
-                </div>
-              </form>
-            </>
-          }
-          {/*  agree to our Terms and Privacy Policy. */}
-          <div className="w-hull text-center block mt-2 text-xs text-gray-600">
-            {t('login.tosDesc')}
-            &nbsp;
-            <Link
-              className='text-primary-600'
-              target='_blank' rel='noopener noreferrer'
-              href='https://dify.ai/terms'
-            >{t('login.tos')}</Link>
-            &nbsp;&&nbsp;
-            <Link
-              className='text-primary-600'
-              target='_blank' rel='noopener noreferrer'
-              href='https://dify.ai/privacy'
-            >{t('login.pp')}</Link>
+      <div className="mx-auto mt-8 w-full">
+        {isInviteLink
+          ? <div className="mx-auto w-full">
+            <h2 className="title-4xl-semi-bold text-text-primary">{t('login.join')}{workspaceName}</h2>
+            {!systemFeatures.branding.enabled && <p className='body-md-regular mt-2 text-text-tertiary'>{t('login.joinTipStart')}{workspaceName}{t('login.joinTipEnd')}</p>}
+          </div>
+          : <div className="mx-auto w-full">
+            <h2 className="title-4xl-semi-bold text-text-primary">{t('login.pageTitle')}</h2>
+            {!systemFeatures.branding.enabled && <p className='body-md-regular mt-2 text-text-tertiary'>{t('login.welcome')}</p>}
+          </div>}
+        <div className="relative">
+          <div className="mt-6 flex flex-col gap-3">
+            {systemFeatures.enable_social_oauth_login && <SocialAuth />}
+            {systemFeatures.sso_enforced_for_signin && <div className='w-full'>
+              <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
+            </div>}
           </div>
 
-          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
-            {t('login.goToInit')}
-            &nbsp;
-            <Link
-              className='text-primary-600'
-              href='/install'
-            >{t('login.setAdminAccount')}</Link>
+          {showORLine && <div className="relative mt-6">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <div className='h-px w-full bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="system-xs-medium-uppercase px-2 text-text-tertiary">{t('login.or')}</span>
+            </div>
           </div>}
+          {
+            (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login) && <>
+              {systemFeatures.enable_email_code_login && authType === 'code' && <>
+                <MailAndCodeAuth isInvite={isInviteLink} />
+                {systemFeatures.enable_email_password_login && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('password') }}>
+                  <span className='system-xs-medium text-components-button-secondary-accent-text'>{t('login.usePassword')}</span>
+                </div>}
+              </>}
+              {systemFeatures.enable_email_password_login && authType === 'password' && <>
+                <MailAndPasswordAuth isInvite={isInviteLink} isEmailSetup={systemFeatures.is_email_setup} allowRegistration={systemFeatures.is_allow_register} />
+                {systemFeatures.enable_email_code_login && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('code') }}>
+                  <span className='system-xs-medium text-components-button-secondary-accent-text'>{t('login.useVerificationCode')}</span>
+                </div>}
+              </>}
+            </>
+          }
+          {allMethodsAreDisabled && <>
+            <div className="rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4">
+              <div className='shadows-shadow-lg mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow'>
+                <RiDoorLockLine className='h-5 w-5' />
+              </div>
+              <p className='system-sm-medium text-text-primary'>{t('login.noLoginMethod')}</p>
+              <p className='system-xs-regular mt-1 text-text-tertiary'>{t('login.noLoginMethodTip')}</p>
+            </div>
+            <div className="relative my-2 py-2">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className='h-px w-full bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
+              </div>
+            </div>
+          </>}
+          {!systemFeatures.branding.enabled && <>
+            <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
+              {t('login.tosDesc')}
+              &nbsp;
+              <Link
+                className='system-xs-medium text-text-secondary hover:underline'
+                target='_blank' rel='noopener noreferrer'
+                href='https://dify.ai/terms'
+              >{t('login.tos')}</Link>
+              &nbsp;&&nbsp;
+              <Link
+                className='system-xs-medium text-text-secondary hover:underline'
+                target='_blank' rel='noopener noreferrer'
+                href='https://dify.ai/privacy'
+              >{t('login.pp')}</Link>
+            </div>
+            {IS_CE_EDITION && <div className="w-hull system-xs-regular mt-2 block text-text-tertiary">
+              {t('login.goToInit')}
+              &nbsp;
+              <Link
+                className='system-xs-medium text-text-secondary hover:underline'
+                href='/install'
+              >{t('login.setAdminAccount')}</Link>
+            </div>}
+          </>}
 
         </div>
       </div>

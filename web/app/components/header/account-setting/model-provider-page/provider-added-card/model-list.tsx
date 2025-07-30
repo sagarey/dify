@@ -1,6 +1,9 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiArrowRightSLine,
+} from '@remixicon/react'
 import type {
   CustomConfigurationModelFixedFields,
   ModelItem,
@@ -12,8 +15,8 @@ import {
 // import Tab from './tab'
 import AddModelButton from './add-model-button'
 import ModelListItem from './model-list-item'
-import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useModalContextSelector } from '@/context/modal-context'
+import { useAppContext } from '@/context/app-context'
 
 type ModelListProps = {
   provider: ModelProvider
@@ -31,6 +34,7 @@ const ModelList: FC<ModelListProps> = ({
 }) => {
   const { t } = useTranslation()
   const configurativeMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
+  const { isCurrentWorkspaceManager } = useAppContext()
   const isConfigurable = configurativeMethods.includes(ConfigurationMethodEnum.customizableModel)
 
   const setShowModelLoadBalancingModal = useModalContextSelector(state => state.setShowModelLoadBalancingModal)
@@ -45,19 +49,20 @@ const ModelList: FC<ModelListProps> = ({
   }, [onChange, provider, setShowModelLoadBalancingModal])
 
   return (
-    <div className='px-2 pb-2 rounded-b-xl'>
-      <div className='py-1 bg-white rounded-lg'>
+    <div className='rounded-b-xl px-2 pb-2'>
+      <div className='rounded-lg bg-components-panel-bg py-1'>
         <div className='flex items-center pl-1 pr-[3px]'>
-          <span className='group shrink-0 flex items-center mr-2'>
-            <span className='group-hover:hidden pl-1 pr-1.5 h-6 leading-6 text-xs font-medium text-gray-500'>
+          <span className='group mr-2 flex shrink-0 items-center'>
+            <span className='system-xs-medium inline-flex h-6 items-center pl-1 pr-1.5 text-text-tertiary group-hover:hidden'>
               {t('common.modelProvider.modelsNum', { num: models.length })}
+              <RiArrowRightSLine className='mr-0.5 h-4 w-4 rotate-90' />
             </span>
             <span
-              className='hidden group-hover:inline-flex items-center pl-1 pr-1.5 h-6 text-xs font-medium text-gray-500 bg-gray-50 cursor-pointer rounded-lg'
+              className='system-xs-medium hidden h-6 cursor-pointer items-center rounded-lg bg-state-base-hover pl-1 pr-1.5 text-text-tertiary group-hover:inline-flex'
               onClick={() => onCollapse()}
             >
-              <ChevronDownDouble className='mr-0.5 w-3 h-3 rotate-180' />
-              {t('common.modelProvider.collapse')}
+              {t('common.modelProvider.modelsNum', { num: models.length })}
+              <RiArrowRightSLine className='mr-0.5 h-4 w-4 rotate-90' />
             </span>
           </span>
           {/* {
@@ -68,8 +73,8 @@ const ModelList: FC<ModelListProps> = ({
             )
           } */}
           {
-            isConfigurable && (
-              <div className='grow flex justify-end'>
+            isConfigurable && isCurrentWorkspaceManager && (
+              <div className='flex grow justify-end'>
                 <AddModelButton onClick={() => onConfig()} />
               </div>
             )

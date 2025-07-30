@@ -1,29 +1,36 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import produce from 'immer'
 import type { Authorization as AuthorizationPayloadType } from '../../types'
 import { APIType, AuthorizationType } from '../../types'
 import RadioGroup from './radio-group'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { VarType } from '@/app/components/workflow/types'
+import type { Var } from '@/app/components/workflow/types'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import BaseInput from '@/app/components/base/input'
+import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.http.authorization'
 
 type Props = {
+  nodeId: string
   payload: AuthorizationPayloadType
   onChange: (payload: AuthorizationPayloadType) => void
   isShow: boolean
   onHide: () => void
 }
 
-const Field = ({ title, isRequired, children }: { title: string; isRequired?: boolean; children: JSX.Element }) => {
+const Field = ({ title, isRequired, children }: { title: string; isRequired?: boolean; children: React.JSX.Element }) => {
   return (
     <div>
-      <div className='leading-8 text-[13px] font-medium text-gray-700'>
+      <div className='text-[13px] font-medium leading-8 text-text-secondary'>
         {title}
-        {isRequired && <span className='ml-0.5 text-[#D92D20]'>*</span>}
+        {isRequired && <span className='ml-0.5 text-text-destructive'>*</span>}
       </div>
       <div>{children}</div>
     </div>
@@ -31,12 +38,21 @@ const Field = ({ title, isRequired, children }: { title: string; isRequired?: bo
 }
 
 const Authorization: FC<Props> = ({
+  nodeId,
   payload,
   onChange,
   isShow,
   onHide,
 }) => {
   const { t } = useTranslation()
+
+  const [isFocus, setIsFocus] = useState(false)
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: (varPayload: Var) => {
+      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+    },
+  })
 
   const [tempPayload, setTempPayload] = React.useState<AuthorizationPayloadType>(payload)
   const handleAuthTypeChange = useCallback((type: string) => {
@@ -80,6 +96,19 @@ const Authorization: FC<Props> = ({
     }
   }, [tempPayload, setTempPayload])
 
+  const handleAPIKeyChange = useCallback((str: string) => {
+    const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
+      if (!draft.config) {
+        draft.config = {
+          type: APIType.basic,
+          api_key: '',
+        }
+      }
+      draft.config.api_key = str
+    })
+    setTempPayload(newPayload)
+  }, [tempPayload, setTempPayload])
+
   const handleConfirm = useCallback(() => {
     onChange(tempPayload)
     onHide()
@@ -118,9 +147,7 @@ const Authorization: FC<Props> = ({
               </Field>
               {tempPayload.config?.type === APIType.custom && (
                 <Field title={t(`${i18nPrefix}.header`)} isRequired>
-                  <input
-                    type='text'
-                    className='w-full h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+                  <BaseInput
                     value={tempPayload.config?.header || ''}
                     onChange={handleAPIKeyOrHeaderChange('header')}
                   />
@@ -128,19 +155,26 @@ const Authorization: FC<Props> = ({
               )}
 
               <Field title={t(`${i18nPrefix}.api-key-title`)} isRequired>
-                <input
-                  type='text'
-                  className='w-full h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
-                  value={tempPayload.config?.api_key || ''}
-                  onChange={handleAPIKeyOrHeaderChange('api_key')}
-                />
+                <div className='flex'>
+                  <Input
+                    instanceId='http-api-key'
+                    className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
+                    value={tempPayload.config?.api_key || ''}
+                    onChange={handleAPIKeyChange}
+                    nodesOutputVars={availableVars}
+                    availableNodes={availableNodesWithParent}
+                    onFocusChange={setIsFocus}
+                    placeholder={' '}
+                    placeholderClassName='!leading-[21px]'
+                  />
+                </div>
               </Field>
             </>
           )}
         </div>
         <div className='mt-6 flex justify-end space-x-2'>
-          <Button onClick={onHide} className='flex items-center !h-8 leading-[18px] !text-[13px] !font-medium'>{t('common.operation.cancel')}</Button>
-          <Button type='primary' onClick={handleConfirm} className='flex items-center !h-8 leading-[18px] !text-[13px] !font-medium'>{t('common.operation.save')}</Button>
+          <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+          <Button variant='primary' onClick={handleConfirm}>{t('common.operation.save')}</Button>
         </div>
       </div>
     </Modal>

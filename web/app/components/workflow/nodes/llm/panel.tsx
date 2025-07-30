@@ -1,10 +1,10 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import ConfigVision from '../_base/components/config-vision'
 import useConfig from './use-config'
-import ResolutionPicker from './components/resolution-picker'
 import type { LLMNodeType } from './types'
 import ConfigPrompt from './components/config-prompt'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
@@ -13,15 +13,15 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { Resolution } from '@/types/app'
-import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import type { NodePanelProps } from '@/app/components/workflow/types'
+import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import StructureOutput from './components/structure-output'
 import Switch from '@/app/components/base/switch'
+import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
+import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import Toast from '@/app/components/base/toast'
+
 const i18nPrefix = 'workflow.nodes.llm'
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({
@@ -29,7 +29,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-
   const {
     readOnly,
     inputs,
@@ -37,7 +36,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     isChatMode,
     isCompletionModel,
     shouldShowContextTip,
-    isShowVisionConfig,
+    isVisionModel,
     handleModelChanged,
     hasSetBlockStatus,
     handleCompletionParamsChange,
@@ -56,77 +55,49 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleMemoryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    isShowSingleRun,
-    hideSingleRun,
-    inputVarValues,
-    setInputVarValues,
-    visionFiles,
-    setVisionFiles,
-    contexts,
-    setContexts,
-    runningStatus,
-    handleRun,
-    handleStop,
-    varInputs,
-    runResult,
+    isModelSupportStructuredOutput,
+    structuredOutputCollapsed,
+    setStructuredOutputCollapsed,
+    handleStructureOutputEnableChange,
+    handleStructureOutputChange,
+    filterJinja2InputVar,
   } = useConfig(id, data)
 
   const model = inputs.model
 
-  const singleRunForms = (() => {
-    const forms: FormProps[] = []
-
-    if (varInputs.length > 0) {
-      forms.push(
-        {
-          label: t(`${i18nPrefix}.singleRun.variable`)!,
-          inputs: varInputs,
-          values: inputVarValues,
-          onChange: setInputVarValues,
-        },
-      )
-    }
-
-    if (inputs.context?.variable_selector && inputs.context?.variable_selector.length > 0) {
-      forms.push(
-        {
-          label: t(`${i18nPrefix}.context`)!,
-          inputs: [{
-            label: '',
-            variable: '#context#',
-            type: InputVarType.contexts,
-            required: false,
-          }],
-          values: { '#context#': contexts },
-          onChange: keyValue => setContexts((keyValue as any)['#context#']),
-        },
-      )
-    }
-
-    if (isShowVisionConfig) {
-      forms.push(
-        {
-          label: t(`${i18nPrefix}.vision`)!,
-          inputs: [{
-            label: t(`${i18nPrefix}.files`)!,
-            variable: '#files#',
-            type: InputVarType.files,
-            required: false,
-          }],
-          values: { '#files#': visionFiles },
-          onChange: keyValue => setVisionFiles((keyValue as any)['#files#']),
-        },
-      )
-    }
-
-    return forms
-  })()
+  const handleModelChange = useCallback((model: {
+    provider: string
+    modelId: string
+    mode?: string
+  }) => {
+    (async () => {
+      try {
+        const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
+          model.provider,
+          model.modelId,
+          inputs.model.completion_params,
+        )
+        const keys = Object.keys(removedDetails)
+        if (keys.length)
+          Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}` })
+        handleCompletionParamsChange(filtered)
+      }
+      catch (e) {
+        Toast.notify({ type: 'error', message: t('common.error') })
+        handleCompletionParamsChange({})
+      }
+      finally {
+        handleModelChanged(model)
+      }
+    })()
+  }, [inputs.model.completion_params])
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.model`)}
+          required
         >
           <ModelParameterModal
             popupClassName='!w-[387px]'
@@ -136,7 +107,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}
-            setModel={handleModelChanged}
+            setModel={handleModelChange}
             onCompletionParamsChange={handleCompletionParamsChange}
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
@@ -159,7 +130,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               filterVar={filterVar}
             />
             {shouldShowContextTip && (
-              <div className='leading-[18px] text-xs font-normal text-[#DC6803]'>{t(`${i18nPrefix}.notSetContextInPromptTip`)}</div>
+              <div className='text-xs font-normal leading-[18px] text-[#DC6803]'>{t(`${i18nPrefix}.notSetContextInPromptTip`)}</div>
             )}
           </>
         </Field>
@@ -178,6 +149,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             hasSetBlockStatus={hasSetBlockStatus}
             varList={inputs.prompt_config?.jinja2_variables || []}
             handleAddVariable={handleAddVariable}
+            modelConfig={model}
           />
         )}
 
@@ -194,7 +166,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               list={inputs.prompt_config?.jinja2_variables || []}
               onChange={handleVarListChange}
               onVarNameChange={handleVarNameChange}
-              filterVar={filterVar}
+              filterVar={filterJinja2InputVar}
+              isSupportFileVar={false}
             />
           </Field>
         )}
@@ -202,29 +175,27 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         {/* Memory put place examples. */}
         {isChatMode && isChatModel && !!inputs.memory && (
           <div className='mt-4'>
-            <div className='flex justify-between items-center h-8 pl-3 pr-2 rounded-lg bg-gray-100'>
+            <div className='flex h-8 items-center justify-between rounded-lg bg-components-input-bg-normal pl-3 pr-2'>
               <div className='flex items-center space-x-1'>
-                <div className='text-xs font-semibold text-gray-700 uppercase'>{t('workflow.nodes.common.memories.title')}</div>
-                <TooltipPlus
+                <div className='text-xs font-semibold uppercase text-text-secondary'>{t('workflow.nodes.common.memories.title')}</div>
+                <Tooltip
                   popupContent={t('workflow.nodes.common.memories.tip')}
-                >
-                  <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
-                </TooltipPlus>
+                  triggerClassName='w-4 h-4'
+                />
               </div>
-              <div className='flex items-center h-[18px] px-1 rounded-[5px] border border-black/8 text-xs font-semibold text-gray-500 uppercase'>{t('workflow.nodes.common.memories.builtIn')}</div>
+              <div className='flex h-[18px] items-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 text-xs font-semibold uppercase text-text-tertiary'>{t('workflow.nodes.common.memories.builtIn')}</div>
             </div>
             {/* Readonly User Query */}
             <div className='mt-4'>
               <Editor
                 title={<div className='flex items-center space-x-1'>
-                  <div className='text-xs font-semibold text-gray-700 uppercase'>user</div>
-                  <TooltipPlus
+                  <div className='text-xs font-semibold uppercase text-text-secondary'>user</div>
+                  <Tooltip
                     popupContent={
                       <div className='max-w-[180px]'>{t('workflow.nodes.llm.roleDescription.user')}</div>
                     }
-                  >
-                    <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
-                  </TooltipPlus>
+                    triggerClassName='w-4 h-4'
+                  />
                 </div>}
                 value={inputs.memory.query_prompt_template || '{{#sys.query#}}'}
                 onChange={handleSyeQueryChange}
@@ -235,10 +206,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 hasSetBlockStatus={hasSetBlockStatus}
                 nodesOutputVars={availableVars}
                 availableNodes={availableNodesWithParent}
+                isSupportFileVar
               />
 
               {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
-                <div className='leading-[18px] text-xs font-normal text-[#DC6803]'>{t(`${i18nPrefix}.sysQueryInUser`)}</div>
+                <div className='text-xs font-normal leading-[18px] text-[#DC6803]'>{t(`${i18nPrefix}.sysQueryInUser`)}</div>
               )}
             </div>
           </div>
@@ -258,52 +230,75 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         )}
 
         {/* Vision: GPT4-vision and so on */}
-        {isShowVisionConfig && (
-          <>
-            <Split />
-            <Field
-              title={t(`${i18nPrefix}.vision`)}
-              tooltip={t('appDebug.vision.description')!}
-              operations={
-                <Switch size='md' defaultValue={inputs.vision.enabled} onChange={handleVisionResolutionEnabledChange} />
-              }
-            >
-              {inputs.vision.enabled
-                ? (
-                  <ResolutionPicker
-                    value={inputs.vision.configs?.detail || Resolution.high}
-                    onChange={handleVisionResolutionChange}
-                  />
-                )
-                : null}
-
-            </Field>
-          </>
-        )}
+        <ConfigVision
+          nodeId={id}
+          readOnly={readOnly}
+          isVisionModel={isVisionModel}
+          enabled={inputs.vision?.enabled}
+          onEnabledChange={handleVisionResolutionEnabledChange}
+          config={inputs.vision?.configs}
+          onConfigChange={handleVisionResolutionChange}
+        />
       </div>
       <Split />
-      <div className='px-4 pt-4 pb-2'>
-        <OutputVars>
-          <>
-            <VarItem
-              name='text'
-              type='string'
-              description={t(`${i18nPrefix}.outputVars.output`)}
+      <OutputVars
+        collapsed={structuredOutputCollapsed}
+        onCollapse={setStructuredOutputCollapsed}
+        operations={
+          <div className='mr-4 flex shrink-0 items-center'>
+            {(!isModelSupportStructuredOutput && !!inputs.structured_output_enabled) && (
+              <Tooltip noDecoration popupContent={
+                <div className='w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]'>
+                  <div className='title-xs-semi-bold text-text-primary'>{t('app.structOutput.modelNotSupported')}</div>
+                  <div className='body-xs-regular mt-1 text-text-secondary'>{t('app.structOutput.modelNotSupportedTip')}</div>
+                </div>
+              }>
+                <div>
+                  <RiAlertFill className='mr-1 size-4 text-text-warning-secondary' />
+                </div>
+              </Tooltip>
+            )}
+            <div className='system-xs-medium-uppercase mr-0.5 text-text-tertiary'>{t('app.structOutput.structured')}</div>
+            <Tooltip popupContent={
+              <div className='max-w-[150px]'>{t('app.structOutput.structuredTip')}</div>
+            }>
+              <div>
+                <RiQuestionLine className='size-3.5 text-text-quaternary' />
+              </div>
+            </Tooltip>
+            <Switch
+              className='ml-2'
+              defaultValue={!!inputs.structured_output_enabled}
+              onChange={handleStructureOutputEnableChange}
+              size='md'
+              disabled={readOnly}
             />
-          </>
-        </OutputVars>
-      </div>
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          onHide={hideSingleRun}
-          forms={singleRunForms}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
+          </div>
+        }
+      >
+        <>
+          <VarItem
+            name='text'
+            type='string'
+            description={t(`${i18nPrefix}.outputVars.output`)}
+          />
+          <VarItem
+            name='usage'
+            type='object'
+            description={t(`${i18nPrefix}.outputVars.usage`)}
+          />
+          {inputs.structured_output_enabled && (
+            <>
+              <Split className='mt-3' />
+              <StructureOutput
+                className='mt-4'
+                value={inputs.structured_output}
+                onChange={handleStructureOutputChange}
+              />
+            </>
+          )}
+        </>
+      </OutputVars>
     </div>
   )
 }

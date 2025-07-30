@@ -3,7 +3,6 @@ import logging
 from flask_restful import reqparse
 from werkzeug.exceptions import InternalServerError
 
-from controllers.console import api
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -12,14 +11,20 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.error import NotWorkflowAppError
 from controllers.console.explore.wraps import InstalledAppResource
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.errors.error import (
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.login import current_user
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
+from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +40,13 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
             raise NotWorkflowAppError()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('inputs', type=dict, required=True, nullable=False, location='json')
-        parser.add_argument('files', type=list, required=False, location='json')
+        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("files", type=list, required=False, location="json")
         args = parser.parse_args()
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.EXPLORE,
-                streaming=True
+                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
 
             return helper.compact_generate_response(response)
@@ -57,9 +58,11 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
 
@@ -76,10 +79,4 @@ class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
-        return {
-            "result": "success"
-        }
-
-
-api.add_resource(InstalledAppWorkflowRunApi, '/installed-apps/<uuid:installed_app_id>/workflows/run')
-api.add_resource(InstalledAppWorkflowTaskStopApi, '/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop')
+        return {"result": "success"}

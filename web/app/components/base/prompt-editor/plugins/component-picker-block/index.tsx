@@ -1,11 +1,11 @@
 import {
+  Fragment,
   memo,
   useCallback,
   useState,
 } from 'react'
 import ReactDOM from 'react-dom'
 import {
-  FloatingPortal,
   flip,
   offset,
   shift,
@@ -27,13 +27,11 @@ import { useBasicTypeaheadTriggerMatch } from '../../hooks'
 import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
 import { $splitNodeContainingQuery } from '../../utils'
-import type { PromptOption } from './prompt-option'
-import PromptMenu from './prompt-menu'
-import VariableMenu from './variable-menu'
-import type { VariableOption } from './variable-option'
 import { useOptions } from './hooks'
+import type { PickerBlockMenuOption } from './menu'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { KEY_ESCAPE_COMMAND } from 'lexical'
 
 type ComponentPickerProps = {
   triggerString: string
@@ -43,6 +41,7 @@ type ComponentPickerProps = {
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  isSupportFileVar?: boolean
 }
 const ComponentPicker = ({
   triggerString,
@@ -52,13 +51,16 @@ const ComponentPicker = ({
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
+  isSupportFileVar,
 }: ComponentPickerProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
-  const { refs, floatingStyles, elements } = useFloating({
+  const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
     middleware: [
-      offset(16), // fix hide cursor
-      shift(),
+      offset(0), // fix hide cursor
+      shift({
+        padding: 8,
+      }),
       flip(),
     ],
   })
@@ -76,10 +78,7 @@ const ComponentPicker = ({
   })
 
   const {
-    allOptions,
-    promptOptions,
-    variableOptions,
-    externalToolOptions,
+    allFlattenOptions,
     workflowVariableOptions,
   } = useOptions(
     contextBlock,
@@ -92,18 +91,15 @@ const ComponentPicker = ({
 
   const onSelectOption = useCallback(
     (
-      selectedOption: PromptOption | VariableOption,
+      selectedOption: PickerBlockMenuOption,
       nodeToRemove: TextNode | null,
       closeMenu: () => void,
-      matchingString: string,
     ) => {
       editor.update(() => {
         if (nodeToRemove && selectedOption?.key)
           nodeToRemove.remove()
 
-        if (selectedOption?.onSelect)
-          selectedOption.onSelect(matchingString)
-
+        selectedOption.onSelectMenuOption()
         closeMenu()
       })
     },
@@ -123,157 +119,106 @@ const ComponentPicker = ({
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
   }, [editor, checkForTriggerMatch, triggerString])
 
-  const renderMenu = useCallback<MenuRenderFn<PromptOption | VariableOption>>((
+  const handleClose = useCallback(() => {
+    const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' })
+    editor.dispatchCommand(KEY_ESCAPE_COMMAND, escapeEvent)
+  }, [editor])
+
+  const renderMenu = useCallback<MenuRenderFn<PickerBlockMenuOption>>((
     anchorElementRef,
-    { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
+    { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
-    if (anchorElementRef.current && (allOptions.length || workflowVariableBlock?.show)) {
-      return (
-        <>
-          {
-            ReactDOM.createPortal(
-              <div ref={refs.setReference}></div>,
-              anchorElementRef.current,
-            )
-          }
-          {
-            elements.reference && (
-              <FloatingPortal id='typeahead-menu'>
-                <div
-                  className='w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg overflow-y-auto'
-                  style={{
-                    ...floatingStyles,
-                    maxHeight: 'calc(1 / 3 * 100vh)',
-                  }}
-                  ref={refs.setFloating}
-                >
+    if (!(anchorElementRef.current && (allFlattenOptions.length || workflowVariableBlock?.show)))
+      return null
+
+    setTimeout(() => {
+      if (anchorElementRef.current)
+        refs.setReference(anchorElementRef.current)
+    }, 0)
+
+    return (
+      <>
+        {
+          ReactDOM.createPortal(
+            // The `LexicalMenu` will try to calculate the position of the floating menu based on the first child.
+            // Since we use floating ui, we need to wrap it with a div to prevent the position calculation being affected.
+            // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
+            <div className='h-0 w-0'>
+              <div
+                className='w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'
+                style={{
+                  ...floatingStyles,
+                  visibility: isPositioned ? 'visible' : 'hidden',
+                }}
+                ref={refs.setFloating}
+              >
+                {
+                  workflowVariableBlock?.show && (
+                    <div className='p-1'>
+                      <VarReferenceVars
+                        searchBoxClassName='mt-1'
+                        vars={workflowVariableOptions}
+                        onChange={(variables: string[]) => {
+                          handleSelectWorkflowVariable(variables)
+                        }}
+                        maxHeightClass='max-h-[34vh]'
+                        isSupportFileVar={isSupportFileVar}
+                        onClose={handleClose}
+                        onBlur={handleClose}
+                        autoFocus={false}
+                      />
+                    </div>
+                  )
+                }
+                {
+                  workflowVariableBlock?.show && !!options.length && (
+                    <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                  )
+                }
+                <div>
                   {
-                    !!promptOptions.length && (
-                      <>
-                        <PromptMenu
-                          startIndex={0}
-                          selectedIndex={selectedIndex}
-                          options={promptOptions}
-                          onClick={(index, option) => {
-                            if (option.disabled)
-                              return
-                            setHighlightedIndex(index)
-                            selectOptionAndCleanUp(option)
-                          }}
-                          onMouseEnter={(index, option) => {
-                            if (option.disabled)
-                              return
-                            setHighlightedIndex(index)
-                          }}
-                        />
-                      </>
-                    )
-                  }
-                  {
-                    !!variableOptions.length && (
-                      <>
+                    options.map((option, index) => (
+                      <Fragment key={option.key}>
                         {
-                          !!promptOptions.length && (
-                            <div className='h-[1px] bg-gray-100'></div>
+                          // Divider
+                          index !== 0 && options.at(index - 1)?.group !== option.group && (
+                            <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
                           )
                         }
-                        <VariableMenu
-                          startIndex={promptOptions.length}
-                          selectedIndex={selectedIndex}
-                          options={variableOptions}
-                          onClick={(index, option) => {
-                            if (option.disabled)
-                              return
-                            setHighlightedIndex(index)
+                        {option.renderMenuOption({
+                          queryString,
+                          isSelected: selectedIndex === index,
+                          onSelect: () => {
                             selectOptionAndCleanUp(option)
-                          }}
-                          onMouseEnter={(index, option) => {
-                            if (option.disabled)
-                              return
+                          },
+                          onSetHighlight: () => {
                             setHighlightedIndex(index)
-                          }}
-                          queryString={queryString}
-                        />
-                      </>
-                    )
-                  }
-                  {
-                    !!externalToolOptions.length && (
-                      <>
-                        {
-                          (!!promptOptions.length || !!variableOptions.length) && (
-                            <div className='h-[1px] bg-gray-100'></div>
-                          )
-                        }
-                        <VariableMenu
-                          startIndex={promptOptions.length + variableOptions.length}
-                          selectedIndex={selectedIndex}
-                          options={externalToolOptions}
-                          onClick={(index, option) => {
-                            if (option.disabled)
-                              return
-                            setHighlightedIndex(index)
-                            selectOptionAndCleanUp(option)
-                          }}
-                          onMouseEnter={(index, option) => {
-                            if (option.disabled)
-                              return
-                            setHighlightedIndex(index)
-                          }}
-                          queryString={queryString}
-                        />
-                      </>
-                    )
-                  }
-                  {
-                    workflowVariableBlock?.show && (
-                      <>
-                        {
-                          (!!promptOptions.length || !!variableOptions.length || !!externalToolOptions.length) && (
-                            <div className='h-[1px] bg-gray-100'></div>
-                          )
-                        }
-                        <div className='p-1'>
-                          <VarReferenceVars
-                            hideSearch
-                            vars={workflowVariableOptions}
-                            onChange={(variables: string[]) => {
-                              handleSelectWorkflowVariable(variables)
-                            }}
-                          />
-                        </div>
-                      </>
-                    )
+                          },
+                        })}
+                      </Fragment>
+                    ))
                   }
                 </div>
-              </FloatingPortal>
-            )
-          }
-        </>
-      )
-    }
-
-    return null
-  }, [
-    allOptions,
-    promptOptions,
-    variableOptions,
-    externalToolOptions,
-    queryString,
-    workflowVariableBlock?.show,
-    workflowVariableOptions,
-    handleSelectWorkflowVariable,
-    elements,
-    floatingStyles,
-    refs,
-  ])
+              </div>
+            </div>,
+            anchorElementRef.current,
+          )
+        }
+      </>
+    )
+  }, [allFlattenOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable, handleClose, isSupportFileVar])
 
   return (
     <LexicalTypeaheadMenuPlugin
-      options={allOptions as any}
+      options={allFlattenOptions}
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
-      anchorClassName='z-[999999]'
+      // The `translate` class is used to workaround the issue that the `typeahead-menu` menu is not positioned as expected.
+      // See also https://github.com/facebook/lexical/blob/772520509308e8ba7e4a82b6cd1996a78b3298d0/packages/lexical-react/src/shared/LexicalMenu.ts#L498
+      //
+      // We no need the position function of the `LexicalTypeaheadMenuPlugin`,
+      // so the reference anchor should be positioned based on the range of the trigger string, and the menu will be positioned by the floating ui.
+      anchorClassName='z-[999999] translate-y-[calc(-100%-3px)]'
       menuRenderFn={renderMenu}
       triggerFn={checkForTriggerMatch}
     />

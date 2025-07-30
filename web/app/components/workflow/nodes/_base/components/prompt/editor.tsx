@@ -1,12 +1,15 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React, { useCallback, useRef } from 'react'
-import cn from 'classnames'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { BlockEnum, EditionType } from '../../../../types'
 import type {
+  ModelConfig,
   Node,
   NodeOutPutVar,
   Variable,
@@ -14,25 +17,31 @@ import type {
 
 import Wrap from '../editor/wrap'
 import { CodeLanguage } from '../../../code/types'
+import PromptGeneratorBtn from '../../../llm/components/prompt-generator-btn'
+import cn from '@/utils/classnames'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
-import s from '@/app/components/app/configuration/config-prompt/style.module.css'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+import {
+  Copy,
+  CopyCheck,
+} from '@/app/components/base/icons/src/vender/line/files'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import ActionButton from '@/app/components/base/action-button'
+import Tooltip from '@/app/components/base/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import Switch from '@/app/components/base/switch'
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
+import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 
 type Props = {
   className?: string
   headerClassName?: string
   instanceId?: string
-  title: string | JSX.Element
+  title: string | React.JSX.Element
   value: string
   onChange: (value: string) => void
   readOnly?: boolean
@@ -49,12 +58,25 @@ type Props = {
   }
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  isSupportFileVar?: boolean
+  isSupportPromptGenerator?: boolean
+  onGenerated?: (prompt: string) => void
+  modelConfig?: ModelConfig
   // for jinja
   isSupportJinja?: boolean
   editionType?: EditionType
   onEditionTypeChange?: (editionType: EditionType) => void
   varList?: Variable[]
   handleAddVariable?: (payload: any) => void
+  containerBackgroundClassName?: string
+  gradientBorder?: boolean
+  titleTooltip?: ReactNode
+  inputClassName?: string
+  editorContainerClassName?: string
+  placeholder?: string
+  placeholderClassName?: string
+  titleClassName?: string
+  required?: boolean
 }
 
 const Editor: FC<Props> = ({
@@ -74,14 +96,28 @@ const Editor: FC<Props> = ({
   hasSetBlockStatus,
   nodesOutputVars,
   availableNodes = [],
+  isSupportFileVar,
+  isSupportPromptGenerator,
   isSupportJinja,
   editionType,
   onEditionTypeChange,
   varList = [],
   handleAddVariable,
+  onGenerated,
+  modelConfig,
+  containerBackgroundClassName: containerClassName,
+  gradientBorder = true,
+  titleTooltip,
+  inputClassName,
+  placeholder,
+  placeholderClassName,
+  titleClassName,
+  editorContainerClassName,
+  required,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
+  const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
 
   const isShowHistory = !isChatModel && isChatApp
 
@@ -109,29 +145,37 @@ const Editor: FC<Props> = ({
     eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId } as any)
   }
 
+  const getVarType = useWorkflowVariableType()
+
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
-      <div ref={ref} className={cn(isFocus ? s.gradientBorder : 'bg-gray-100', isExpand && 'h-full', '!rounded-[9px] p-0.5')}>
-        <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
-          <div className={cn(headerClassName, 'pt-1 pl-3 pr-2 flex justify-between h-6 items-center')}>
-            <div className='leading-4 text-xs font-semibold text-gray-700 uppercase'>{title}</div>
+      <div ref={ref} className={cn(isFocus ? (gradientBorder && 'bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2') : 'bg-transparent', isExpand && 'h-full', '!rounded-[9px] p-0.5', containerClassName)}>
+        <div className={cn(isFocus ? 'bg-background-default' : 'bg-components-input-bg-normal', isExpand && 'flex h-full flex-col', 'rounded-lg', containerClassName)}>
+          <div className={cn('flex items-center justify-between pl-3 pr-2 pt-1', headerClassName)}>
+            <div className='flex gap-2'>
+              <div className={cn('text-xs font-semibold uppercase leading-4 text-text-secondary', titleClassName)}>{title} {required && <span className='text-text-destructive'>*</span>}</div>
+              {titleTooltip && <Tooltip popupContent={titleTooltip} />}
+            </div>
             <div className='flex items-center'>
-              <div className='leading-[18px] text-xs font-medium text-gray-500'>{value?.length || 0}</div>
-              <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
+              <div className='text-xs font-medium leading-[18px] text-text-tertiary'>{value?.length || 0}</div>
+              {isSupportPromptGenerator && (
+                <PromptGeneratorBtn className='ml-[5px]' onGenerated={onGenerated} modelConfig={modelConfig} />
+              )}
+
+              <div className='ml-2 mr-2 h-3 w-px bg-divider-regular'></div>
               {/* Operations */}
-              <div className='flex items-center space-x-2'>
+              <div className='flex items-center space-x-[2px]'>
                 {isSupportJinja && (
-                  <TooltipPlus
+                  <Tooltip
                     popupContent={
                       <div>
                         <div>{t('workflow.common.enableJinja')}</div>
-                        <a className='text-[#155EEF]' target='_blank' href='https://jinja.palletsprojects.com/en/2.10.x/'>{t('workflow.common.learnMore')}</a>
+                        <a className='text-text-accent' target='_blank' href='https://jinja.palletsprojects.com/en/2.10.x/'>{t('workflow.common.learnMore')}</a>
                       </div>
                     }
-                    hideArrow
                   >
-                    <div className={cn(editionType === EditionType.jinja2 && 'border-black/5 bg-white', 'flex h-[22px] items-center px-1.5 rounded-[5px] border border-transparent hover:border-black/5 space-x-0.5')}>
-                      <Jinja className='w-6 h-3 text-gray-300' />
+                    <div className={cn(editionType === EditionType.jinja2 && 'border-components-button-ghost-bg-hover bg-components-button-ghost-bg-hover', 'flex h-[22px] items-center space-x-0.5 rounded-[5px] border border-transparent px-1.5 hover:border-components-button-ghost-bg-hover')}>
+                      <Jinja className='h-3 w-6 text-text-quaternary' />
                       <Switch
                         size='sm'
                         defaultValue={editionType === EditionType.jinja2}
@@ -140,25 +184,33 @@ const Editor: FC<Props> = ({
                         }}
                       />
                     </div>
-                  </TooltipPlus>
+                  </Tooltip>
 
                 )}
                 {!readOnly && (
-                  <TooltipPlus
+                  <Tooltip
                     popupContent={`${t('workflow.common.insertVarTip')}`}
                   >
-                    <Variable02 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleInsertVariable} />
-                  </TooltipPlus>
+                    <ActionButton onClick={handleInsertVariable}>
+                      <Variable02 className='h-4 w-4' />
+                    </ActionButton>
+                  </Tooltip>
                 )}
                 {showRemove && (
-                  <Trash03 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={onRemove} />
+                  <ActionButton onClick={onRemove}>
+                    <RiDeleteBinLine className='h-4 w-4' />
+                  </ActionButton>
                 )}
                 {!isCopied
                   ? (
-                    <Clipboard className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleCopy} />
+                    <ActionButton onClick={handleCopy}>
+                      <Copy className='h-4 w-4' />
+                    </ActionButton>
                   )
                   : (
-                    <ClipboardCheck className='mx-1 w-3.5 h-3.5 text-gray-500' />
+                    <ActionButton>
+                      <CopyCheck className='h-4 w-4' />
+                    </ActionButton>
                   )
                 }
                 <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
@@ -168,14 +220,17 @@ const Editor: FC<Props> = ({
           </div>
 
           {/* Min: 80 Max: 560. Header: 24 */}
-          <div className={cn('pb-2', isExpand && 'flex flex-col grow')}>
+          <div className={cn('pb-2', isExpand && 'flex grow flex-col')}>
             {!(isSupportJinja && editionType === EditionType.jinja2)
               ? (
-                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
+                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto  px-3', editorContainerClassName)}>
                   <PromptEditor
+                    key={controlPromptEditorRerenderKey}
+                    placeholder={placeholder}
+                    placeholderClassName={placeholderClassName}
                     instanceId={instanceId}
                     compact
-                    className='min-h-[56px]'
+                    className={cn('min-h-[56px]', inputClassName)}
                     style={isExpand ? { height: editorExpandHeight - 5 } : {}}
                     value={value}
                     contextBlock={{
@@ -198,10 +253,14 @@ const Editor: FC<Props> = ({
                     workflowVariableBlock={{
                       show: true,
                       variables: nodesOutputVars || [],
+                      getVarType,
                       workflowNodesMap: availableNodes.reduce((acc, node) => {
                         acc[node.id] = {
                           title: node.data.title,
                           type: node.data.type,
+                          width: node.width,
+                          height: node.height,
+                          position: node.position,
                         }
                         if (node.data.type === BlockEnum.Start) {
                           acc.sys = {
@@ -216,13 +275,14 @@ const Editor: FC<Props> = ({
                     onBlur={setBlur}
                     onFocus={setFocus}
                     editable={!readOnly}
+                    isSupportFileVar={isSupportFileVar}
                   />
                   {/* to patch Editor not support dynamic change editable status */}
                   {readOnly && <div className='absolute inset-0 z-10'></div>}
                 </div>
               )
               : (
-                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
+                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative min-h-[56px] overflow-y-auto  px-3', editorContainerClassName)}>
                   <CodeEditor
                     availableVars={nodesOutputVars || []}
                     varList={varList}
@@ -234,6 +294,7 @@ const Editor: FC<Props> = ({
                     onChange={onChange}
                     noWrapper
                     isExpand={isExpand}
+                    className={inputClassName}
                   />
                 </div>
               )}

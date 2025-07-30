@@ -1,21 +1,46 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import produce from 'immer'
 import { isEqual } from 'lodash-es'
+import { v4 as uuid4 } from 'uuid'
 import type { ValueSelector, Var } from '../../types'
 import { BlockEnum, VarType } from '../../types'
 import {
-  useIsChatMode, useNodesReadOnly,
+  useIsChatMode,
+  useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
-import type { KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from './types'
+import type {
+  HandleAddCondition,
+  HandleRemoveCondition,
+  HandleToggleConditionLogicalOperator,
+  HandleUpdateCondition,
+  KnowledgeRetrievalNodeType,
+  MetadataFilteringModeEnum,
+  MultipleRetrievalConfig,
+} from './types'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+  MetadataFilteringVariableType,
+} from './types'
+import {
+  getMultipleRetrievalConfig,
+  getSelectedDatasetsMode,
+} from './utils'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -24,6 +49,9 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
   const startNodeId = startNode?.id
   const { inputs, setInputs: doSetInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
+  const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
+
+  const inputRef = useRef(inputs)
 
   const setInputs = useCallback((s: KnowledgeRetrievalNodeType) => {
     const newInputs = produce(s, (draft) => {
@@ -34,12 +62,8 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     })
     // not work in pass to draft...
     doSetInputs(newInputs)
+    inputRef.current = newInputs
   }, [doSetInputs])
-
-  const inputRef = useRef(inputs)
-  useEffect(() => {
-    inputRef.current = inputs
-  }, [inputs])
 
   const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
@@ -54,8 +78,22 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
   const {
+    modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+
+  const {
+    currentModel: currentRerankModel,
+    currentProvider: currentRerankProvider,
+  } = useCurrentProviderAndModel(
+    rerankModelList,
+    rerankDefaultModel
+      ? {
+        ...rerankDefaultModel,
+        provider: rerankDefaultModel.provider.provider,
+      }
+      : undefined,
+  )
 
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
@@ -101,7 +139,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   // set defaults models
   useEffect(() => {
     const inputs = inputRef.current
-    if (inputs.retrieval_mode === RETRIEVE_TYPE.multiWay && inputs.multiple_retrieval_config?.reranking_model?.provider)
+    if (inputs.retrieval_mode === RETRIEVE_TYPE.multiWay && inputs.multiple_retrieval_config?.reranking_model?.provider && currentRerankModel && rerankDefaultModel)
       return
 
     if (inputs.retrieval_mode === RETRIEVE_TYPE.oneWay && inputs.single_retrieval_config?.model?.provider)
@@ -121,39 +159,32 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
           }
         }
       }
-
       const multipleRetrievalConfig = draft.multiple_retrieval_config
       draft.multiple_retrieval_config = {
         top_k: multipleRetrievalConfig?.top_k || DATASET_DEFAULT.top_k,
         score_threshold: multipleRetrievalConfig?.score_threshold,
-        reranking_model: payload.retrieval_mode === RETRIEVE_TYPE.oneWay
-          ? undefined
-          : (!multipleRetrievalConfig?.reranking_model?.provider
-            ? {
-              provider: rerankDefaultModel?.provider?.provider || '',
-              model: rerankDefaultModel?.model || '',
-            }
-            : multipleRetrievalConfig?.reranking_model),
+        reranking_model: multipleRetrievalConfig?.reranking_model,
+        reranking_mode: multipleRetrievalConfig?.reranking_mode,
+        weights: multipleRetrievalConfig?.weights,
+        reranking_enable: multipleRetrievalConfig?.reranking_enable !== undefined
+          ? multipleRetrievalConfig.reranking_enable
+          : Boolean(currentRerankModel && rerankDefaultModel),
       }
     })
     setInputs(newInput)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProvider?.provider, currentModel, rerankDefaultModel])
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProvider?.provider, currentModel, currentRerankModel, rerankDefaultModel])
+  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
+  const [rerankModelOpen, setRerankModelOpen] = useState(false)
   const handleRetrievalModeChange = useCallback((newMode: RETRIEVE_TYPE) => {
     const newInputs = produce(inputs, (draft) => {
       draft.retrieval_mode = newMode
       if (newMode === RETRIEVE_TYPE.multiWay) {
-        draft.multiple_retrieval_config = {
-          top_k: draft.multiple_retrieval_config?.top_k || DATASET_DEFAULT.top_k,
-          score_threshold: draft.multiple_retrieval_config?.score_threshold,
-          reranking_model: !draft.multiple_retrieval_config?.reranking_model?.provider
-            ? {
-              provider: rerankDefaultModel?.provider?.provider || '',
-              model: rerankDefaultModel?.model || '',
-            }
-            : draft.multiple_retrieval_config?.reranking_model,
-        }
+        const multipleRetrievalConfig = draft.multiple_retrieval_config
+        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, selectedDatasets, selectedDatasets, {
+          provider: currentRerankProvider?.provider,
+          model: currentRerankModel?.model,
+        })
       }
       else {
         const hasSetModel = draft.single_retrieval_config?.model?.provider
@@ -170,82 +201,190 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       }
     })
     setInputs(newInputs)
-  }, [currentModel?.model, currentModel?.model_properties?.mode, currentProvider?.provider, inputs, rerankDefaultModel?.model, rerankDefaultModel?.provider?.provider, setInputs])
+  }, [currentModel?.model, currentModel?.model_properties?.mode, currentProvider?.provider, inputs, setInputs, selectedDatasets, currentRerankModel, currentRerankProvider])
 
   const handleMultipleRetrievalConfigChange = useCallback((newConfig: MultipleRetrievalConfig) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.multiple_retrieval_config = newConfig
+      draft.multiple_retrieval_config = getMultipleRetrievalConfig(newConfig!, selectedDatasets, selectedDatasets, {
+        provider: currentRerankProvider?.provider,
+        model: currentRerankModel?.model,
+      })
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [inputs, setInputs, selectedDatasets, currentRerankModel, currentRerankProvider])
 
+  const [selectedDatasetsLoaded, setSelectedDatasetsLoaded] = useState(false)
   // datasets
-  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
   useEffect(() => {
     (async () => {
       const inputs = inputRef.current
       const datasetIds = inputs.dataset_ids
       if (datasetIds?.length > 0) {
-        const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
+        const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } as any })
         setSelectedDatasets(dataSetsWithDetail)
       }
       const newInputs = produce(inputs, (draft) => {
         draft.dataset_ids = datasetIds
       })
       setInputs(newInputs)
+      setSelectedDatasetsLoaded(true)
     })()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
+    const inputs = inputRef.current
     let query_variable_selector: ValueSelector = inputs.query_variable_selector
     if (isChatMode && inputs.query_variable_selector.length === 0 && startNodeId)
       query_variable_selector = [startNodeId, 'sys.query']
 
-    setInputs({
-      ...inputs,
-      query_variable_selector,
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setInputs(produce(inputs, (draft) => {
+      draft.query_variable_selector = query_variable_selector
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleOnDatasetsChange = useCallback((newDatasets: DataSet[]) => {
+    const {
+      mixtureHighQualityAndEconomic,
+      mixtureInternalAndExternal,
+      inconsistentEmbeddingModel,
+      allInternal,
+      allExternal,
+    } = getSelectedDatasetsMode(newDatasets)
     const newInputs = produce(inputs, (draft) => {
       draft.dataset_ids = newDatasets.map(d => d.id)
+
+      if (payload.retrieval_mode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
+        const multipleRetrievalConfig = draft.multiple_retrieval_config
+        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets, selectedDatasets, {
+          provider: currentRerankProvider?.provider,
+          model: currentRerankModel?.model,
+        })
+      }
     })
+    updateDatasetsDetail(newDatasets)
     setInputs(newInputs)
     setSelectedDatasets(newDatasets)
-  }, [inputs, setInputs])
+
+    if (
+      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
+      || mixtureInternalAndExternal
+      || allExternal
+    )
+      setRerankModelOpen(true)
+  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider, updateDatasetsDetail])
 
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string
   }, [])
 
-  // single run
+  const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
+    setInputs(produce(inputRef.current, (draft) => {
+      draft.metadata_filtering_mode = newMode
+    }))
+  }, [setInputs])
+
+  const handleAddCondition = useCallback<HandleAddCondition>(({ name, type }) => {
+    let operator: ComparisonOperator = ComparisonOperator.is
+
+    if (type === MetadataFilteringVariableType.number)
+      operator = ComparisonOperator.equal
+
+    const newCondition = {
+      id: uuid4(),
+      name,
+      comparison_operator: operator,
+    }
+
+    const newInputs = produce(inputRef.current, (draft) => {
+      if (draft.metadata_filtering_conditions) {
+        draft.metadata_filtering_conditions.conditions.push(newCondition)
+      }
+      else {
+        draft.metadata_filtering_conditions = {
+          logical_operator: LogicalOperator.and,
+          conditions: [newCondition],
+        }
+      }
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleRemoveCondition = useCallback<HandleRemoveCondition>((id) => {
+    const conditions = inputRef.current.metadata_filtering_conditions?.conditions || []
+    const index = conditions.findIndex(c => c.id === id)
+    const newInputs = produce(inputRef.current, (draft) => {
+      if (index > -1)
+        draft.metadata_filtering_conditions?.conditions.splice(index, 1)
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleUpdateCondition = useCallback<HandleUpdateCondition>((id, newCondition) => {
+    const conditions = inputRef.current.metadata_filtering_conditions?.conditions || []
+    const index = conditions.findIndex(c => c.id === id)
+    const newInputs = produce(inputRef.current, (draft) => {
+      if (index > -1)
+        draft.metadata_filtering_conditions!.conditions[index] = newCondition
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleToggleConditionLogicalOperator = useCallback<HandleToggleConditionLogicalOperator>(() => {
+    const oldLogicalOperator = inputRef.current.metadata_filtering_conditions?.logical_operator
+    const newLogicalOperator = oldLogicalOperator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.metadata_filtering_conditions!.logical_operator = newLogicalOperator
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleMetadataModelChange = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.metadata_model_config = {
+        provider: model.provider,
+        name: model.modelId,
+        mode: model.mode || 'chat',
+        completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
+      }
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleMetadataCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      draft.metadata_model_config = {
+        ...draft.metadata_model_config!,
+        completion_params: newParams,
+      }
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const filterStringVar = useCallback((varPayload: Var) => {
+    return [VarType.string].includes(varPayload.type)
+  }, [])
+
   const {
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<KnowledgeRetrievalNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {
-      query: '',
-    },
+    availableVars: availableStringVars,
+    availableNodesWithParent: availableStringNodesWithParent,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: filterStringVar,
   })
 
-  const query = runInputData.query
-  const setQuery = useCallback((newQuery: string) => {
-    setRunInputData({
-      ...runInputData,
-      query: newQuery,
-    })
-  }, [runInputData, setRunInputData])
+  const filterNumberVar = useCallback((varPayload: Var) => {
+    return [VarType.number].includes(varPayload.type)
+  }, [])
+
+  const {
+    availableVars: availableNumberVars,
+    availableNodesWithParent: availableNumberNodesWithParent,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: filterNumberVar,
+  })
 
   return {
     readOnly,
@@ -256,16 +395,22 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     handleMultipleRetrievalConfigChange,
     handleModelChanged,
     handleCompletionParamsChange,
-    selectedDatasets,
+    selectedDatasets: selectedDatasets.filter(d => d.name),
+    selectedDatasetsLoaded,
     handleOnDatasetsChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    query,
-    setQuery,
-    runResult,
+    rerankModelOpen,
+    setRerankModelOpen,
+    handleMetadataFilterModeChange,
+    handleUpdateCondition,
+    handleAddCondition,
+    handleRemoveCondition,
+    handleToggleConditionLogicalOperator,
+    handleMetadataModelChange,
+    handleMetadataCompletionParamsChange,
+    availableStringVars,
+    availableStringNodesWithParent,
+    availableNumberVars,
+    availableNumberNodesWithParent,
   }
 }
 

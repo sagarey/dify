@@ -1,47 +1,56 @@
 import type { FC } from 'react'
-import {
-  memo,
-  useState,
-} from 'react'
-import cn from 'classnames'
+import { memo } from 'react'
+import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import type { BlockEnum } from '../types'
 import { useTabs } from './hooks'
 import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
 import AllTools from './all-tools'
+import cn from '@/utils/classnames'
 
 export type TabsProps = {
+  activeTab: TabsEnum
+  onActiveTabChange: (activeTab: TabsEnum) => void
   searchText: string
+  tags: string[]
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
+  filterElem: React.ReactNode
   noBlocks?: boolean
 }
 const Tabs: FC<TabsProps> = ({
+  activeTab,
+  onActiveTabChange,
+  tags,
   searchText,
   onSelect,
   availableBlocksTypes,
+  filterElem,
   noBlocks,
 }) => {
   const tabs = useTabs()
-  const [activeTab, setActiveTab] = useState(noBlocks ? TabsEnum.Tools : TabsEnum.Blocks)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
 
   return (
     <div onClick={e => e.stopPropagation()}>
       {
         !noBlocks && (
-          <div className='flex items-center px-3 border-b-[0.5px] border-b-black/5'>
+          <div className='relative flex bg-background-section-burn pl-1 pt-1'>
             {
               tabs.map(tab => (
                 <div
                   key={tab.key}
                   className={cn(
-                    'relative mr-4 h-[34px] leading-[34px] text-[13px] font-medium cursor-pointer',
+                    'system-sm-medium relative mr-0.5 flex h-8 cursor-pointer  items-center rounded-t-lg px-3 ',
                     activeTab === tab.key
-                      ? 'text-gray-700 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-primary-600'
-                      : 'text-gray-500',
+                      ? 'sm-no-bottom cursor-default bg-components-panel-bg text-text-accent'
+                      : 'text-text-tertiary',
                   )}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => onActiveTabChange(tab.key)}
                 >
                   {tab.name}
                 </div>
@@ -50,13 +59,16 @@ const Tabs: FC<TabsProps> = ({
           </div>
         )
       }
+      {filterElem}
       {
         activeTab === TabsEnum.Blocks && !noBlocks && (
-          <Blocks
-            searchText={searchText}
-            onSelect={onSelect}
-            availableBlocksTypes={availableBlocksTypes}
-          />
+          <div className='border-t border-divider-subtle'>
+            <Blocks
+              searchText={searchText}
+              onSelect={onSelect}
+              availableBlocksTypes={availableBlocksTypes}
+            />
+          </div>
         )
       }
       {
@@ -64,6 +76,13 @@ const Tabs: FC<TabsProps> = ({
           <AllTools
             searchText={searchText}
             onSelect={onSelect}
+            tags={tags}
+            canNotSelectMultiple
+            buildInTools={buildInTools || []}
+            customTools={customTools || []}
+            workflowTools={workflowTools || []}
+            mcpTools={mcpTools || []}
+            canChooseMCPTool
           />
         )
       }

@@ -3,11 +3,14 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
+import {
+  RiAddLine,
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import Toast from '../../base/toast'
-import { Plus } from '../../base/icons/src/vender/line/general'
-import { ChevronDown } from '../../base/icons/src/vender/line/arrows'
 import examples from './examples'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import { importSchemaFromURL } from '@/service/tools'
 
 type Props = {
@@ -53,28 +56,30 @@ const GetSchema: FC<Props> = ({
   }, showExamplesRef)
 
   return (
-    <div className='flex space-x-1 justify-end relative w-[224px]'>
+    <div className='relative flex w-[224px] justify-end space-x-1'>
       <div ref={importURLRef}>
         <Button
-          className='flex items-center !h-6 !px-2 space-x-1 '
+          size='small'
+          className='space-x-1 '
           onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
         >
-          <Plus className='w-3 h-3' />
-          <div className='text-xs font-medium text-gray-700'>{t('tools.createTool.importFromUrl')}</div>
+          <RiAddLine className='h-3 w-3' />
+          <div className='system-xs-medium text-text-secondary'>{t('tools.createTool.importFromUrl')}</div>
         </Button>
         {showImportFromUrl && (
-          <div className=' absolute left-[-35px] top-[26px] p-2 rounded-lg border border-gray-200 bg-white shadow-lg'>
+          <div className=' absolute left-[-35px] top-[26px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg'>
             <div className='relative'>
-              <input
+              <Input
                 type='text'
-                className='w-[244px] h-8 pl-1.5 pr-[44px] overflow-x-auto border border-gray-200 rounded-lg text-[13px]'
+                className='w-[244px]'
                 placeholder={t('tools.createTool.importFromUrlPlaceHolder')!}
                 value={importUrl}
                 onChange={e => setImportUrl(e.target.value)}
               />
               <Button
-                className='absolute top-1 right-1 !h-6 !px-2 text-xs font-medium'
-                type='primary'
+                className='absolute right-1 top-1'
+                size='small'
+                variant='primary'
                 disabled={!importUrl}
                 onClick={handleImportFromUrl}
                 loading={isParsing}
@@ -85,16 +90,17 @@ const GetSchema: FC<Props> = ({
           </div>
         )}
       </div>
-      <div className='relative' ref={showExamplesRef}>
+      <div className='relative -mt-0.5' ref={showExamplesRef}>
         <Button
-          className='flex items-center !h-6 !px-2 space-x-1'
+          size='small'
+          className='space-x-1'
           onClick={() => { setShowExamples(!showExamples) }}
         >
-          <div className='text-xs font-medium text-gray-700'>{t('tools.createTool.examples')}</div>
-          <ChevronDown className='w-3 h-3' />
+          <div className='system-xs-medium text-text-secondary'>{t('tools.createTool.examples')}</div>
+          <RiArrowDownSLine className='h-3 w-3' />
         </Button>
         {showExamples && (
-          <div className='absolute top-7 right-0 p-1 rounded-lg bg-white shadow-sm'>
+          <div className='absolute right-0 top-7 rounded-lg bg-components-panel-bg p-1 shadow-sm'>
             {examples.map(item => (
               <div
                 key={item.key}
@@ -102,7 +108,7 @@ const GetSchema: FC<Props> = ({
                   onChange(item.content)
                   setShowExamples(false)
                 }}
-                className='px-3 py-1.5 rounded-lg hover:bg-gray-50 leading-5 text-sm font-normal text-gray-700 cursor-pointer whitespace-nowrap'
+                className='system-sm-regular cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 leading-5 text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover'
               >
                 {t(`tools.createTool.exampleOptions.${item.key}`)}
               </div>

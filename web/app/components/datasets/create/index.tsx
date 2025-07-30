@@ -3,20 +3,30 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '../../base/app-unavailable'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
-import StepsNavBar from './steps-nav-bar'
 import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
+import { TopBar } from './top-bar'
 import { DataSourceType } from '@/models/datasets'
-import type { DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
 import { fetchDatasetDetail } from '@/service/datasets'
-import type { NotionPage } from '@/models/common'
+import { DataSourceProvider, type NotionPage } from '@/models/common'
 import { useModalContext } from '@/context/modal-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type DatasetUpdateFormProps = {
   datasetId?: string
+}
+
+const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
+  crawl_sub_pages: true,
+  only_main_content: true,
+  includes: '',
+  excludes: '',
+  limit: 10,
+  max_depth: '',
+  use_sitemap: true,
 }
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
@@ -26,6 +36,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.FILE)
   const [step, setStep] = useState(1)
   const [indexingTypeCache, setIndexTypeCache] = useState('')
+  const [retrievalMethodCache, setRetrievalMethodCache] = useState('')
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [result, setResult] = useState<createDocumentResponse | undefined>()
   const [hasError, setHasError] = useState(false)
@@ -36,9 +47,14 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setNotionPages(value)
   }
 
+  const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
+  const [crawlOptions, setCrawlOptions] = useState<CrawlOptions>(DEFAULT_CRAWL_OPTIONS)
+
   const updateFileList = (preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
   }
+  const [websiteCrawlProvider, setWebsiteCrawlProvider] = useState<DataSourceProvider>(DataSourceProvider.fireCrawl)
+  const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
 
   const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
     const targetIndex = list.findIndex(file => file.fileID === fileItem.fileID)
@@ -64,6 +80,9 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   }
   const updateResultCache = (res?: createDocumentResponse) => {
     setResult(res)
+  }
+  const updateRetrievalMethodCache = (method: string) => {
+    setRetrievalMethodCache(method)
   }
 
   const nextStep = useCallback(() => {
@@ -92,7 +111,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           const detail = await fetchDatasetDetail(datasetId)
           setDetail(detail)
         }
-        catch (e) {
+        catch {
           setHasError(true)
         }
       }
@@ -103,11 +122,9 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
 
   return (
-    <div className='flex' style={{ height: 'calc(100vh - 56px)' }}>
-      <div className="flex flex-col w-11 sm:w-56 overflow-y-auto bg-white border-r border-gray-200 shrink-0">
-        <StepsNavBar step={step} datasetId={datasetId} />
-      </div>
-      <div className="grow bg-white">
+    <div className='flex flex-col overflow-hidden bg-components-panel-bg' style={{ height: 'calc(100vh - 56px)' }}>
+      <TopBar activeIndex={step - 1} datasetId={datasetId} />
+      <div style={{ height: 'calc(100% - 52px)' }}>
         {step === 1 && <StepOne
           hasConnection={hasConnection}
           onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
@@ -121,6 +138,12 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           notionPages={notionPages}
           updateNotionPages={updateNotionPages}
           onStepChange={nextStep}
+          websitePages={websitePages}
+          updateWebsitePages={setWebsitePages}
+          onWebsiteCrawlProviderChange={setWebsiteCrawlProvider}
+          onWebsiteCrawlJobIdChange={setWebsiteCrawlJobId}
+          crawlOptions={crawlOptions}
+          onCrawlOptionsChange={setCrawlOptions}
         />}
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           isAPIKeySet={!!embeddingsDefaultModel}
@@ -130,14 +153,20 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           dataSourceType={dataSourceType}
           files={fileList.map(file => file.file)}
           notionPages={notionPages}
+          websitePages={websitePages}
+          websiteCrawlProvider={websiteCrawlProvider}
+          websiteCrawlJobId={websiteCrawlJobId}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
+          updateRetrievalMethodCache={updateRetrievalMethodCache}
           updateResultCache={updateResultCache}
+          crawlOptions={crawlOptions}
         />}
         {step === 3 && <StepThree
           datasetId={datasetId}
           datasetName={detail?.name}
           indexingType={detail?.indexing_technique || indexingTypeCache}
+          retrievalMethod={detail?.retrieval_model_dict?.search_method || retrievalMethodCache}
           creationCache={result}
         />}
       </div>

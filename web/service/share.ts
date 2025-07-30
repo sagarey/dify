@@ -1,9 +1,31 @@
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnIterationFinished, IOnIterationNexted, IOnIterationStarted, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnTextChunk, IOnTextReplace, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
+import type {
+  IOnCompleted,
+  IOnData,
+  IOnError,
+  IOnFile,
+  IOnIterationFinished,
+  IOnIterationNext,
+  IOnIterationStarted,
+  IOnLoopFinished,
+  IOnLoopNext,
+  IOnLoopStarted,
+  IOnMessageEnd,
+  IOnMessageReplace,
+  IOnNodeFinished,
+  IOnNodeStarted,
+  IOnTTSChunk,
+  IOnTTSEnd,
+  IOnTextChunk,
+  IOnTextReplace,
+  IOnThought,
+  IOnWorkflowFinished,
+  IOnWorkflowStarted,
+} from './base'
 import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
 } from './base'
-import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type {
   AppConversationData,
   AppData,
@@ -11,7 +33,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { SystemFeatures } from '@/types/feature'
+import type { AccessMode } from '@/models/access-control'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -30,7 +52,7 @@ export function getUrl(url: string, isInstalledApp: boolean, installedAppId: str
   return isInstalledApp ? `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}` : url
 }
 
-export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
+export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace, onTTSChunk, onTTSEnd }: {
   onData: IOnData
   onCompleted: IOnCompleted
   onFile: IOnFile
@@ -39,13 +61,15 @@ export const sendChatMessage = async (body: Record<string, any>, { onData, onCom
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
   getAbortController?: (abortController: AbortController) => void
+  onTTSChunk?: IOnTTSChunk
+  onTTSEnd?: IOnTTSEnd
 }, isInstalledApp: boolean, installedAppId = '') => {
   return ssePost(getUrl('chat-messages', isInstalledApp, installedAppId), {
     body: {
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, onThought, onFile, isPublicAPI: !isInstalledApp, onError, getAbortController, onMessageEnd, onMessageReplace })
+  }, { onData, onCompleted, onThought, onFile, isPublicAPI: !isInstalledApp, onError, getAbortController, onMessageEnd, onMessageReplace, onTTSChunk, onTTSEnd })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string, isInstalledApp: boolean, installedAppId = '') => {
@@ -76,6 +100,9 @@ export const sendWorkflowMessage = async (
     onIterationStart,
     onIterationNext,
     onIterationFinish,
+    onLoopStart,
+    onLoopNext,
+    onLoopFinish,
     onTextChunk,
     onTextReplace,
   }: {
@@ -84,8 +111,11 @@ export const sendWorkflowMessage = async (
     onNodeFinished: IOnNodeFinished
     onWorkflowFinished: IOnWorkflowFinished
     onIterationStart: IOnIterationStarted
-    onIterationNext: IOnIterationNexted
+    onIterationNext: IOnIterationNext
     onIterationFinish: IOnIterationFinished
+    onLoopStart: IOnLoopStarted
+    onLoopNext: IOnLoopNext
+    onLoopFinish: IOnLoopFinished
     onTextChunk: IOnTextChunk
     onTextReplace: IOnTextReplace
   },
@@ -97,7 +127,21 @@ export const sendWorkflowMessage = async (
       ...body,
       response_mode: 'streaming',
     },
-  }, { onNodeStarted, onWorkflowStarted, onWorkflowFinished, isPublicAPI: !isInstalledApp, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onTextChunk, onTextReplace })
+  }, {
+    onNodeStarted,
+    onWorkflowStarted,
+    onWorkflowFinished,
+    isPublicAPI: !isInstalledApp,
+    onNodeFinished,
+    onIterationStart,
+    onIterationNext,
+    onIterationFinish,
+    onLoopStart,
+    onLoopNext,
+    onLoopFinish,
+    onTextChunk,
+    onTextReplace,
+  })
 }
 
 export const fetchAppInfo = async () => {
@@ -142,10 +186,6 @@ export const fetchAppParams = async (isInstalledApp: boolean, installedAppId = '
   return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId)) as Promise<ChatConfig>
 }
 
-export const fetchSystemFeatures = async () => {
-  return (getAction('get', false))(getUrl('system-features', false, '')) as Promise<SystemFeatures>
-}
-
 export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
   return (getAction('get', false))(getUrl('/enterprise/sso/saml/login', false, ''), {
     params: {
@@ -174,11 +214,39 @@ export const fetchWebOAuth2SSOUrl = async (appCode: string, redirectUrl: string)
   }) as Promise<{ url: string }>
 }
 
+export const fetchMembersSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/members/saml/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+  }) as Promise<{ url: string }>
+}
+
+export const fetchMembersOIDCSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/members/oidc/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+
+  }) as Promise<{ url: string }>
+}
+
+export const fetchMembersOAuth2SSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/members/oauth2/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+  }) as Promise<{ url: string }>
+}
+
 export const fetchAppMeta = async (isInstalledApp: boolean, installedAppId = '') => {
   return (getAction('get', isInstalledApp))(getUrl('meta', isInstalledApp, installedAppId)) as Promise<AppMeta>
 }
 
-export const updateFeedback = async ({ url, body }: { url: string; body: Feedbacktype }, isInstalledApp: boolean, installedAppId = '') => {
+export const updateFeedback = async ({ url, body }: { url: string; body: FeedbackType }, isInstalledApp: boolean, installedAppId = '') => {
   return (getAction('post', isInstalledApp))(getUrl(url, isInstalledApp, installedAppId), { body })
 }
 
@@ -214,8 +282,27 @@ export const textToAudio = (url: string, isPublicAPI: boolean, body: FormData) =
   return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ data: string }>
 }
 
-export const fetchAccessToken = async (appCode: string) => {
+export const textToAudioStream = (url: string, isPublicAPI: boolean, header: { content_type: string }, body: { streaming: boolean; voice?: string; message_id?: string; text?: string | null | undefined }) => {
+  return (getAction('post', !isPublicAPI))(url, { body, header }, { needAllResponseContent: true })
+}
+
+export const fetchAccessToken = async ({ appCode, userId, webAppAccessToken }: { appCode: string, userId?: string, webAppAccessToken?: string | null }) => {
   const headers = new Headers()
   headers.append('X-App-Code', appCode)
-  return get('/passport', { headers }) as Promise<{ access_token: string }>
+  const params = new URLSearchParams()
+  webAppAccessToken && params.append('web_app_access_token', webAppAccessToken)
+  userId && params.append('user_id', userId)
+  const url = `/passport?${params.toString()}`
+  return get(url, { headers }) as Promise<{ access_token: string }>
+}
+
+export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
+  if (isInstalledApp)
+    return consoleGet<{ result: boolean }>(`/enterprise/webapp/permission?appId=${appId}`)
+
+  return get<{ result: boolean }>(`/webapp/permission?appId=${appId}`)
+}
+
+export const getAppAccessModeByAppCode = (appCode: string) => {
+  return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appCode=${appCode}`)
 }

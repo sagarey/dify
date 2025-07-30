@@ -1,19 +1,18 @@
 'use client'
-import React, { useEffect, useReducer } from 'react'
+import React, { type Reducer, useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { useRouter } from 'next/navigation'
-// import { useContext } from 'use-context-selector'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip/index'
-
+import Tooltip from '@/app/components/base/tooltip'
 import { SimpleSelect } from '@/app/components/base/select'
 import { timezones } from '@/utils/timezone'
-import { LanguagesSupported, languages } from '@/i18n/language'
+import { LanguagesSupported, languages } from '@/i18n-config/language'
 import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
-// import I18n from '@/context/i18n'
+import { useDocLink } from '@/context/i18n'
 
 type IState = {
   formState: 'processing' | 'error' | 'success' | 'initial'
@@ -22,7 +21,14 @@ type IState = {
   timezone: string
 }
 
-const reducer = (state: IState, action: any) => {
+type IAction
+  = | { type: 'failed', payload: null }
+  | { type: 'invitation_code', value: string }
+  | { type: 'interface_language', value: string }
+  | { type: 'timezone', value: string }
+  | { type: 'formState', value: 'processing' }
+
+const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
   switch (action.type) {
     case 'invitation_code':
       return { ...state, invitation_code: action.value }
@@ -46,12 +52,13 @@ const reducer = (state: IState, action: any) => {
 
 const OneMoreStep = () => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const router = useRouter()
-  // const { locale } = useContext(I18n)
+  const searchParams = useSearchParams()
 
   const [state, dispatch] = useReducer(reducer, {
     formState: 'initial',
-    invitation_code: '',
+    invitation_code: searchParams.get('invitation_code') || '',
     interface_language: 'en-US',
     timezone: 'Asia/Shanghai',
   })
@@ -77,38 +84,35 @@ const OneMoreStep = () => {
 
   return (
     <>
-      <div className="w-full mx-auto">
-        <h2 className="text-[32px] font-bold text-gray-900">{t('login.oneMoreStep')}</h2>
-        <p className='mt-1 text-sm text-gray-600 '>{t('login.createSample')}</p>
+      <div className="mx-auto w-full">
+        <h2 className="title-4xl-semi-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
+        <p className='body-md-regular mt-1 text-text-tertiary'>{t('login.createSample')}</p>
       </div>
 
-      <div className="w-full mx-auto mt-6">
-        <div className="bg-white">
+      <div className="mx-auto mt-6 w-full">
+        <div className="relative">
           <div className="mb-5">
-            <label className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+            <label className="system-md-semibold my-2 flex items-center justify-between text-text-secondary">
               {t('login.invitationCode')}
               <Tooltip
-                clickable
-                selector='dont-have'
-                htmlContent={
+                popupContent={
                   <div className='w-[256px] text-xs font-medium'>
                     <div className='font-medium'>{t('login.sendUsMail')}</div>
-                    <div className='text-xs font-medium cursor-pointer text-primary-600'>
+                    <div className='cursor-pointer text-xs font-medium text-text-accent-secondary'>
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
                   </div>
                 }
               >
-                <span className='cursor-pointer text-primary-600'>{t('login.donthave')}</span>
+                <span className='cursor-pointer text-text-accent-secondary'>{t('login.dontHave')}</span>
               </Tooltip>
             </label>
             <div className="mt-1">
-              <input
+              <Input
                 id="invitation_code"
                 value={state.invitation_code}
                 type="text"
                 placeholder={t('login.invitationCodePlaceholder') || ''}
-                className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
                 onChange={(e) => {
                   dispatch({ type: 'invitation_code', value: e.target.value.trim() })
                 }}
@@ -116,37 +120,37 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className='mb-5'>
-            <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+            <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
               {t('login.interfaceLanguage')}
             </label>
-            <div className="relative mt-1 rounded-md shadow-sm">
+            <div className="mt-1">
               <SimpleSelect
                 defaultValue={LanguagesSupported[0]}
                 items={languages.filter(item => item.supported)}
                 onSelect={(item) => {
-                  dispatch({ type: 'interface_language', value: item.value })
+                  dispatch({ type: 'interface_language', value: item.value as typeof LanguagesSupported[number] })
                 }}
               />
             </div>
           </div>
           <div className='mb-4'>
-            <label htmlFor="timezone" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="timezone" className="system-md-semibold text-text-tertiary">
               {t('login.timezone')}
             </label>
-            <div className="relative mt-1 rounded-md shadow-sm">
+            <div className="mt-1">
               <SimpleSelect
                 defaultValue={state.timezone}
                 items={timezones}
                 onSelect={(item) => {
-                  dispatch({ type: 'timezone', value: item.value })
+                  dispatch({ type: 'timezone', value: item.value as typeof state.timezone })
                 }}
               />
             </div>
           </div>
           <div>
             <Button
-              type='primary'
-              className='w-full !fone-medium !text-sm'
+              variant='primary'
+              className='w-full'
               disabled={state.formState === 'processing'}
               onClick={() => {
                 dispatch({ type: 'formState', value: 'processing' })
@@ -155,13 +159,13 @@ const OneMoreStep = () => {
               {t('login.go')}
             </Button>
           </div>
-          <div className="block w-hull mt-2 text-xs text-gray-600">
+          <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
             {t('login.license.tip')}
             &nbsp;
             <Link
-              className='text-primary-600'
+              className='system-xs-medium text-text-accent-secondary'
               target='_blank' rel='noopener noreferrer'
-              href={'https://docs.dify.ai/user-agreement/open-source'}
+              href={docLink('/policies/agreement/README')}
             >{t('login.license.link')}</Link>
           </div>
         </div>

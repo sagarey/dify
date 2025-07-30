@@ -6,8 +6,9 @@ import { useTranslation } from 'react-i18next'
 import type { OutputVar } from '../../../code/types'
 import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
+import Input from '@/app/components/base/input'
 import type { VarType } from '@/app/components/workflow/types'
-import { checkKeys } from '@/utils/var'
+import { checkKeys, replaceSpaceWithUnderscreInVarNameInput } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 
 type Props = {
@@ -36,6 +37,8 @@ const OutputVarList: FC<Props> = ({
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const oldKey = list[index].variable
+
+      replaceSpaceWithUnderscreInVarNameInput(e.target)
       const newKey = e.target.value
 
       const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
@@ -85,19 +88,19 @@ const OutputVarList: FC<Props> = ({
     <div className='space-y-2'>
       {list.map((item, index) => (
         <div className='flex items-center space-x-1' key={index}>
-          <input
+          <Input
             readOnly={readonly}
             value={item.variable}
             onChange={handleVarNameChange(index)}
-            className='w-0 grow h-8 leading-8 px-2.5 rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px] placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
-            type='text' />
+            wrapperClassName='grow'
+          />
           <VarTypePicker
             readonly={readonly}
             value={item.variable_type}
             onChange={handleVarTypeChange(index)}
           />
           <RemoveButton
-            className='!p-2 !bg-gray-100 hover:!bg-gray-200'
+            className='!bg-gray-100 !p-2 hover:!bg-gray-200'
             onClick={handleVarRemove(index)}
           />
         </div>

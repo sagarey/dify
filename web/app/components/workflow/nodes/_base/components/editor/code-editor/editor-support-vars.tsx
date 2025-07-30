@@ -3,9 +3,9 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import type { Props as EditorProps } from '.'
 import Editor from '.'
+import cn from '@/utils/classnames'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import type { NodeOutPutVar, Variable } from '@/app/components/workflow/types'
 
@@ -84,15 +84,15 @@ const CodeEditor: FC<Props> = ({
 
   const getUniqVarName = (varName: string) => {
     if (varList.find(v => v.variable === varName)) {
-      const match = varName.match(/_([0-9]+)$/)
+      const match = varName.match(/_(\d+)$/)
 
       const index = (() => {
         if (match)
-          return parseInt(match[1]!) + 1
+          return Number.parseInt(match[1]!) + 1
 
         return 1
       })()
-      return getUniqVarName(`${varName.replace(/_([0-9]+)$/, '')}_${index}`)
+      return getUniqVarName(`${varName.replace(/_(\d+)$/, '')}_${index}`)
     }
     return varName
   }
@@ -148,7 +148,7 @@ const CodeEditor: FC<Props> = ({
       {isShowVarPicker && (
         <div
           ref={popupRef}
-          className='w-[228px] p-1 bg-white rounded-lg border border-gray-200 shadow-lg space-y-1'
+          className='w-[228px] space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg'
           style={{
             position: 'fixed',
             top: popupPosition.y,
@@ -160,6 +160,7 @@ const CodeEditor: FC<Props> = ({
             hideSearch
             vars={availableVars}
             onChange={handleSelectVar}
+            isSupportFileVar={false}
           />
         </div>
       )}

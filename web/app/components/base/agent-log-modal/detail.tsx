@@ -4,15 +4,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { flatten, uniq } from 'lodash-es'
-import cn from 'classnames'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
+import cn from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import { fetchAgentLogDetail } from '@/service/log'
 import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import type { IChatItem } from '@/app/components/app/chat/type'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 
 export type AgentLogDetailProps = {
   activeTab?: 'DETAIL' | 'TRACING'
@@ -36,7 +36,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   const [list, setList] = useState<AgentIteration[]>([])
 
   const tools = useMemo(() => {
-    const res = uniq(flatten(runDetail?.iterations.map((iteration: any) => {
+    const res = uniq(flatten(runDetail?.iterations.map((iteration) => {
       return iteration.tool_calls.map((tool: any) => tool.tool_name).filter(Boolean)
     })).filter(Boolean))
     return res
@@ -79,28 +79,28 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   }, [appDetail, conversationID, messageID])
 
   return (
-    <div className='grow relative flex flex-col'>
+    <div className='relative flex grow flex-col'>
       {/* tab */}
-      <div className='shrink-0 flex items-center px-4 border-b-[0.5px] border-[rgba(0,0,0,0.05)]'>
+      <div className='flex shrink-0 items-center border-b-[0.5px] border-divider-regular px-4'>
         <div
           className={cn(
-            'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-            currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-gray-700',
+            'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+            currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-text-secondary',
           )}
           onClick={() => switchTab('DETAIL')}
         >{t('runLog.detail')}</div>
         <div
           className={cn(
-            'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-            currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-gray-700',
+            'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+            currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-text-secondary',
           )}
           onClick={() => switchTab('TRACING')}
         >{t('runLog.tracing')}</div>
       </div>
-      {/* panel detal */}
-      <div className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
+      {/* panel detail */}
+      <div className={cn('h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg', currentTab !== 'DETAIL' && '!bg-background-section')}>
         {loading && (
-          <div className='flex h-full items-center justify-center bg-white'>
+          <div className='flex h-full items-center justify-center bg-components-panel-bg'>
             <Loading />
           </div>
         )}

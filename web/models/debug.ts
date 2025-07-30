@@ -1,4 +1,14 @@
-import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem } from '@/types/app'
+import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
+import type {
+  RerankingModeEnum,
+  WeightedScoreEnum,
+} from '@/models/datasets'
+import type { FileUpload } from '@/app/components/base/features/types'
+import type {
+  MetadataFilteringConditions,
+  MetadataFilteringModeEnum,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { ModelConfig as NodeModelConfig } from '@/app/components/workflow/types'
 export type Inputs = Record<string, string | number | object>
 
 export enum PromptMode {
@@ -49,6 +59,7 @@ export type PromptVariable = {
   config?: Record<string, any>
   icon?: string
   icon_background?: string
+  hide?: boolean // used in frontend to hide variable
 }
 
 export type CompletionParams = {
@@ -79,6 +90,7 @@ export type TextToSpeechConfig = {
   enabled: boolean
   voice?: string
   language?: string
+  autoPlay?: TtsAutoPlay
 }
 
 export type CitationConfig = MoreLikeThisConfig
@@ -122,11 +134,14 @@ export type ModelConfig = {
   configs: PromptConfig
   opening_statement: string | null
   more_like_this: MoreLikeThisConfig | null
+  suggested_questions: string[] | null
   suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig | null
   speech_to_text: SpeechToTextConfig | null
   text_to_speech: TextToSpeechConfig | null
+  file_upload: FileUpload | null
   retriever_resource: RetrieverResourceConfig | null
   sensitive_word_avoidance: ModerationConfig | null
+  annotation_reply: AnnotationReplyConfig | null
   dataSets: any[]
   agentConfig: AgentConfig
 }
@@ -143,13 +158,29 @@ export type DatasetConfigs = {
   }
   top_k: number
   score_threshold_enabled: boolean
-  score_threshold?: number | null
+  score_threshold: number | null | undefined
   datasets: {
     datasets: {
       enabled: boolean
       id: string
     }[]
   }
+  reranking_mode?: RerankingModeEnum
+  weights?: {
+    weight_type: WeightedScoreEnum
+    vector_setting: {
+      vector_weight: number
+      embedding_provider_name: string
+      embedding_model_name: string
+    }
+    keyword_setting: {
+      keyword_weight: number
+    }
+  }
+  reranking_enable?: boolean
+  metadata_filtering_mode?: MetadataFilteringModeEnum
+  metadata_filtering_conditions?: MetadataFilteringConditions
+  metadata_model_config?: NodeModelConfig
 }
 
 export type DebugRequestBody = {
@@ -199,7 +230,7 @@ export type LogSessionListResponse = {
     query: string // user's query question
     message: string // prompt send to LLM
     answer: string
-    creat_at: string
+    created_at: string
   }[]
   total: number
   page: number
@@ -208,7 +239,7 @@ export type LogSessionListResponse = {
 // log session detail and debug
 export type LogSessionDetailResponse = {
   id: string
-  cnversation_id: string
+  conversation_id: string
   model_provider: string
   query: string
   inputs: Record<string, string | number | object>[]

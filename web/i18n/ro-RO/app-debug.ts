@@ -198,6 +198,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'Încărcare fișier',
+      description: 'Caseta de intrare chat permite încărcarea de imagini, documente și alte fișiere.',
+      supportedTypes: 'Tipuri de fișiere suportate',
+      numberLimit: 'Numărul maxim de încărcări',
+      modalTitle: 'Setări încărcare fișier',
+    },
+    imageUpload: {
+      title: 'Încărcare imagine',
+      description: 'Permite încărcarea imaginilor.',
+      supportedTypes: 'Tipuri de fișiere suportate',
+      numberLimit: 'Numărul maxim de încărcări',
+      modalTitle: 'Setări încărcare imagine',
+    },
+    bar: {
+      empty: 'Activează funcții pentru a îmbunătăți experiența utilizatorilor aplicației web',
+      enableText: 'Funcții activate',
+      manage: 'Gestionează',
+    },
+    documentUpload: {
+      title: 'Document',
+      description: 'Activarea Documentului va permite modelului să primească documente și să răspundă la întrebări despre ele.',
+    },
+    audioUpload: {
+      title: 'Audio',
+      description: 'Activarea Audio va permite modelului să proceseze fișiere audio pentru transcriere și analiză.',
+    },
   },
   automatic: {
     title: 'Orchestrarea automată a aplicațiilor',
@@ -254,18 +281,18 @@ const translation = {
     typeSelect: 'Selectează',
   },
   varKeyError: {
-    canNoBeEmpty: 'Cheia variabilei nu poate fi goală',
-    tooLong: 'Cheia variabilei: {{key}} este prea lungă. Nu poate fi mai lungă de 30 de caractere',
-    notValid: 'Cheia variabilei: {{key}} este nevalidă. Poate conține doar litere, cifre și sublinieri',
-    notStartWithNumber: 'Cheia variabilei: {{key}} nu poate începe cu un număr',
-    keyAlreadyExists: 'Cheia variabilei: :{{key}} deja există',
+    canNoBeEmpty: '{{key}} este necesară',
+    tooLong: '{{key}} este prea lungă. Nu poate fi mai lungă de 30 de caractere',
+    notValid: '{{key}} este nevalidă. Poate conține doar litere, cifre și sublinieri',
+    notStartWithNumber: '{{key}} nu poate începe cu un număr',
+    keyAlreadyExists: ':{{key}} deja există',
   },
   otherError: {
     promptNoBeEmpty: 'Promptul nu poate fi gol',
     historyNoBeEmpty: 'Istoricul conversației trebuie setat în prompt',
     queryNoBeEmpty: 'Interogația trebuie setată în prompt',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Adăugați câmp de intrare',
     'editModalTitle': 'Editați câmpul de intrare',
     'description': 'Setare pentru variabila {{varName}}',
@@ -285,13 +312,16 @@ const translation = {
     'labelName': 'Nume etichetă',
     'inputPlaceholder': 'Vă rugăm să introduceți',
     'required': 'Obligatoriu',
+    'hide': 'Ascundeți',
     'errorMsg': {
-      varNameRequired: 'Numele variabilei este obligatoriu',
       labelNameRequired: 'Numele etichetei este obligatoriu',
       varNameCanBeRepeat: 'Numele variabilei nu poate fi repetat',
       atLeastOneOption: 'Este necesară cel puțin o opțiune',
       optionRepeat: 'Există opțiuni repetate',
     },
+    'defaultValue': 'Valoare implicită',
+    'noDefaultValue': 'Fără valoare implicită',
+    'selectDefaultValue': 'Selectați valoarea implicită',
   },
   vision: {
     name: 'Viziune',
@@ -322,6 +352,9 @@ const translation = {
       language: 'Limbă',
       resolutionTooltip: 'Suport pentru limba de voce text-to-speech.',
       voice: 'Voce',
+      autoPlay: 'Redare automata',
+      autoPlayEnabled: 'Deschis',
+      autoPlayDisabled: 'închidere',
     },
   },
   openingStatement: {

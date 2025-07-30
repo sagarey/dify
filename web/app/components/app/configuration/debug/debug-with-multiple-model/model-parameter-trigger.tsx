@@ -1,19 +1,20 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiArrowDownSLine } from '@remixicon/react'
 import type { ModelAndParameter } from '../types'
 import { useDebugWithMultipleModelContext } from './context'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 import {
+  type FormValue,
   MODEL_STATUS_TEXT,
   ModelStatusEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
@@ -45,7 +46,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
     }
     onMultipleModelConfigsChange(true, newModelConfigs)
   }
-  const handleParamsChange = (params: any) => {
+  const handleParamsChange = (params: FormValue) => {
     const newModelConfigs = [...multipleModelConfigs]
     newModelConfigs[index] = {
       ...newModelConfigs[index],
@@ -72,15 +73,15 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
       }) => (
         <div
           className={`
-            flex items-center max-w-[200px] h-8 px-2 rounded-lg cursor-pointer
-            ${open && 'bg-gray-100'}
+            flex h-8 max-w-[200px] cursor-pointer items-center rounded-lg px-2
+            ${open && 'bg-state-base-hover'}
             ${currentModel && currentModel.status !== ModelStatusEnum.active && '!bg-[#FFFAEB]'}
           `}
         >
           {
             currentProvider && (
               <ModelIcon
-                className='mr-1 !w-4 !h-4'
+                className='mr-1 !h-4 !w-4'
                 provider={currentProvider}
                 modelName={currentModel?.model}
               />
@@ -88,32 +89,32 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           }
           {
             !currentProvider && (
-              <div className='flex items-center justify-center mr-1 w-4 h-4 rounded border border-dashed border-primary-100'>
-                <CubeOutline className='w-[11px] h-[11px] text-primary-600' />
+              <div className='mr-1 flex h-4 w-4 items-center justify-center rounded'>
+                <CubeOutline className='h-4 w-4 text-text-accent' />
               </div>
             )
           }
           {
             currentModel && (
               <ModelName
-                className='mr-0.5 text-gray-800'
+                className='mr-0.5 text-text-secondary'
                 modelItem={currentModel}
               />
             )
           }
           {
             !currentModel && (
-              <div className='mr-0.5 text-[13px] font-medium text-primary-600 truncate'>
+              <div className='mr-0.5 truncate text-[13px] font-medium text-text-accent'>
                 {t('common.modelProvider.selectModel')}
               </div>
             )
           }
-          <ChevronDown className={`w-3 h-3 ${(currentModel && currentProvider) ? 'text-gray-800' : 'text-primary-600'}`} />
+          <RiArrowDownSLine className={`h-3 w-3 ${(currentModel && currentProvider) ? 'text-text-tertiary' : 'text-text-accent'}`} />
           {
             currentModel && currentModel.status !== ModelStatusEnum.active && (
-              <TooltipPlus popupContent={MODEL_STATUS_TEXT[currentModel.status][language]}>
-                <AlertTriangle className='w-4 h-4 text-[#F79009]' />
-              </TooltipPlus>
+              <Tooltip popupContent={MODEL_STATUS_TEXT[currentModel.status][language]}>
+                <AlertTriangle className='h-4 w-4 text-[#F79009]' />
+              </Tooltip>
             )
           }
         </div>

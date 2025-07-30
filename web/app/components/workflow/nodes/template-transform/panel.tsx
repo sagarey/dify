@@ -1,6 +1,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import { CodeLanguage } from '../code/types'
 import useConfig from './use-config'
 import type { TemplateTransformNodeType } from './types'
@@ -10,10 +13,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.templateTransform'
 
@@ -33,21 +33,11 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
     handleAddEmptyVariable,
     handleCodeChange,
     filterVar,
-    // single run
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    varInputs,
-    inputVarValues,
-    setInputVarValues,
-    runResult,
   } = useConfig(id, data)
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
 
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
@@ -62,6 +52,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
             onChange={handleVarListChange}
             onVarNameChange={handleVarNameChange}
             filterVar={filterVar}
+            isSupportFileVar={false}
           />
         </Field>
         <Split />
@@ -78,13 +69,13 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           headerRight={
             <div className='flex items-center'>
               <a
-                className='flex items-center space-x-0.5 h-[18px] text-xs font-normal text-gray-500'
+                className='flex h-[18px] items-center space-x-0.5 text-xs font-normal text-text-tertiary'
                 href="https://jinja.palletsprojects.com/en/3.1.x/templates/"
                 target='_blank'>
                 <span>{t(`${i18nPrefix}.codeSupportTip`)}</span>
-                <HelpCircle className='w-3 h-3' />
+                <RiQuestionLine className='h-3 w-3' />
               </a>
-              <div className='mx-1.5 w-px h-3 bg-gray-200'></div>
+              <div className='mx-1.5 h-3 w-px bg-divider-regular'></div>
             </div>
           }
           value={inputs.template}
@@ -92,7 +83,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         />
       </div>
       <Split />
-      <div className='px-4 pt-4 pb-2'>
+      <div>
         <OutputVars>
           <>
             <VarItem
@@ -103,23 +94,6 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           </>
         </OutputVars>
       </div>
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          onHide={hideSingleRun}
-          forms={[
-            {
-              inputs: varInputs,
-              values: inputVarValues,
-              onChange: setInputVarValues,
-            },
-          ]}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
     </div>
   )
 }

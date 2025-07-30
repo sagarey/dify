@@ -3,12 +3,13 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
-import cn from 'classnames'
 import type { Memory } from '../../../types'
 import { MemoryRole } from '../../../types'
+import cn from '@/utils/classnames'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
 import Slider from '@/app/components/base/slider'
+import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'workflow.nodes.common.memory'
 const WINDOW_SIZE_MIN = 1
@@ -31,12 +32,12 @@ const RoleItem: FC<RoleItemProps> = ({
   }, [onChange])
   return (
     <div className='flex items-center justify-between'>
-      <div className='text-[13px] font-normal text-gray-700'>{title}</div>
-      <input
+      <div className='text-[13px] font-normal text-text-secondary'>{title}</div>
+      <Input
         readOnly={readonly}
         value={value}
         onChange={handleChange}
-        className='w-[200px] h-8 leading-8 px-2.5 rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+        className='h-8 w-[200px]'
         type='text' />
     </div>
   )
@@ -52,7 +53,7 @@ type Props = {
 
 const MEMORY_DEFAULT: Memory = {
   window: { enabled: false, size: WINDOW_SIZE_DEFAULT },
-  query_prompt_template: '',
+  query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
 }
 
 const MemoryConfig: FC<Props> = ({
@@ -87,7 +88,7 @@ const MemoryConfig: FC<Props> = ({
         limitedSize = null
       }
       else {
-        limitedSize = parseInt(limitedSize as string, 10)
+        limitedSize = Number.parseInt(limitedSize as string, 10)
         if (isNaN(limitedSize))
           limitedSize = WINDOW_SIZE_DEFAULT
 
@@ -144,16 +145,16 @@ const MemoryConfig: FC<Props> = ({
           <>
             {/* window size */}
             <div className='flex justify-between'>
-              <div className='flex items-center h-8 space-x-1'>
+              <div className='flex h-8 items-center space-x-2'>
                 <Switch
                   defaultValue={payload?.window?.enabled}
                   onChange={handleWindowEnabledChange}
                   size='md'
                   disabled={readonly}
                 />
-                <div className='leading-[18px] text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.windowSize`)}</div>
+                <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.windowSize`)}</div>
               </div>
-              <div className='flex items-center h-8 space-x-2'>
+              <div className='flex h-8 items-center space-x-2'>
                 <Slider
                   className='w-[144px]'
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
@@ -163,22 +164,23 @@ const MemoryConfig: FC<Props> = ({
                   onChange={handleWindowSizeChange}
                   disabled={readonly || !payload.window?.enabled}
                 />
-                <input
+                <Input
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
-                  className='shrink-0 block ml-4 pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
+                  wrapperClassName='w-12'
+                  className='appearance-none pr-0'
                   type='number'
                   min={WINDOW_SIZE_MIN}
                   max={WINDOW_SIZE_MAX}
                   step={1}
                   onChange={e => handleWindowSizeChange(e.target.value)}
                   onBlur={handleBlur}
-                  disabled={readonly}
+                  disabled={readonly || !payload.window?.enabled}
                 />
               </div>
             </div>
             {canSetRoleName && (
               <div className='mt-4'>
-                <div className='leading-6 text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
+                <div className='text-xs font-medium uppercase leading-6 text-text-tertiary'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
                 <div className='mt-1 space-y-2'>
                   <RoleItem
                     readonly={readonly}

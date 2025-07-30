@@ -2,7 +2,7 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   ChatConfig,
@@ -13,13 +13,15 @@ import AgentContent from './agent-content'
 import BasicContent from './basic-content'
 import SuggestedQuestions from './suggested-questions'
 import More from './more'
-import WorkflowProcess from './workflow-process'
-import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/general'
-import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
-import LoadingAnim from '@/app/components/app/chat/loading-anim'
-import Citation from '@/app/components/app/chat/citation'
+import WorkflowProcessItem from './workflow-process'
+import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
+import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
-import type { Emoji } from '@/app/components/tools/types'
+import type { AppData } from '@/models/share'
+import AnswerIcon from '@/app/components/base/answer-icon'
+import cn from '@/utils/classnames'
+import { FileList } from '@/app/components/base/file-uploader'
+import ContentSwitch from '../content-switch'
 
 type AnswerProps = {
   item: ChatItem
@@ -28,10 +30,12 @@ type AnswerProps = {
   config?: ChatConfig
   answerIcon?: ReactNode
   responding?: boolean
-  allToolIcons?: Record<string, string | Emoji>
   showPromptLog?: boolean
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
+  appData?: AppData
+  noChatInput?: boolean
+  switchSibling?: (siblingMessageId: string) => void
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -40,10 +44,12 @@ const Answer: FC<AnswerProps> = ({
   config,
   answerIcon,
   responding,
-  allToolIcons,
   showPromptLog,
   chatAnswerContainerInner,
   hideProcessDetail,
+  appData,
+  noChatInput,
+  switchSibling,
 }) => {
   const { t } = useTranslation()
   const {
@@ -53,6 +59,8 @@ const Answer: FC<AnswerProps> = ({
     more,
     annotation,
     workflowProcess,
+    allFiles,
+    message_files,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
@@ -65,57 +73,56 @@ const Answer: FC<AnswerProps> = ({
     if (containerRef.current)
       setContainerWidth(containerRef.current?.clientWidth + 16)
   }
+  useEffect(() => {
+    getContainerWidth()
+  }, [])
+
   const getContentWidth = () => {
     if (contentRef.current)
       setContentWidth(contentRef.current?.clientWidth)
   }
 
   useEffect(() => {
-    getContainerWidth()
-  }, [])
-
-  useEffect(() => {
     if (!responding)
       getContentWidth()
   }, [responding])
 
+  // Recalculate contentWidth when content changes (e.g., SVG preview/source toggle)
+  useEffect(() => {
+    if (!containerRef.current)
+      return
+    const resizeObserver = new ResizeObserver(() => {
+      getContentWidth()
+    })
+    resizeObserver.observe(containerRef.current)
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
+  const handleSwitchSibling = useCallback((direction: 'prev' | 'next') => {
+    if (direction === 'prev')
+      item.prevSibling && switchSibling?.(item.prevSibling)
+    else
+      item.nextSibling && switchSibling?.(item.nextSibling)
+  }, [switchSibling, item.prevSibling, item.nextSibling])
+
   return (
-    <div className='flex mb-2 last:mb-0'>
-      <div className='shrink-0 relative w-10 h-10'>
-        {
-          answerIcon || (
-            <div className='flex items-center justify-center w-full h-full rounded-full bg-[#d5f5f6] border-[0.5px] border-black/5 text-xl'>
-              🤖
-            </div>
-          )
-        }
-        {
-          responding && (
-            <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-white rounded-full shadow-xs border-[0.5px] border-gray-50'>
-              <LoadingAnim type='avatar' />
-            </div>
-          )
-        }
+    <div className='mb-2 flex last:mb-0'>
+      <div className='relative h-10 w-10 shrink-0'>
+        {answerIcon || <AnswerIcon />}
+        {responding && (
+          <div className='absolute left-[-3px] top-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs'>
+            <LoadingAnim type='avatar' />
+          </div>
+        )}
       </div>
-      <div className='chat-answer-container group grow w-0 ml-4' ref={containerRef}>
-        <div className={`group relative pr-10 ${chatAnswerContainerInner}`}>
-          <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
+      <div className='chat-answer-container group ml-4 w-0 grow pb-4' ref={containerRef}>
+        <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
           <div
             ref={contentRef}
-            className={`
-              relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900
-              ${workflowProcess && 'w-full'}
-            `}
+            className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
           >
-            {annotation?.id && (
-              <div
-                className='absolute -top-3.5 -right-3.5 box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'
-              >
-                <div className='p-1 rounded-lg bg-[#EEF4FF] '>
-                  <MessageFast className='w-4 h-4' />
-                </div>
-              </div>
-            )}
             {
               !responding && (
                 <Operation
@@ -126,22 +133,34 @@ const Answer: FC<AnswerProps> = ({
                   question={question}
                   index={index}
                   showPromptLog={showPromptLog}
+                  noChatInput={noChatInput}
                 />
               )
             }
+            {/** Render the normal steps */}
             {
-              workflowProcess && (
-                <WorkflowProcess
+              workflowProcess && !hideProcessDetail && (
+                <WorkflowProcessItem
                   data={workflowProcess}
                   item={item}
-                  hideInfo
                   hideProcessDetail={hideProcessDetail}
+                />
+              )
+            }
+            {/** Hide workflow steps by it's settings in siteInfo */}
+            {
+              workflowProcess && hideProcessDetail && appData && (
+                <WorkflowProcessItem
+                  data={workflowProcess}
+                  item={item}
+                  hideProcessDetail={hideProcessDetail}
+                  readonly={!appData.site.show_workflow_steps}
                 />
               )
             }
             {
               responding && !content && !hasAgentThoughts && (
-                <div className='flex items-center justify-center w-6 h-5'>
+                <div className='flex h-5 w-6 items-center justify-center'>
                   <LoadingAnim type='text' />
                 </div>
               )
@@ -152,11 +171,33 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              hasAgentThoughts && (
+              (hasAgentThoughts) && (
                 <AgentContent
                   item={item}
                   responding={responding}
-                  allToolIcons={allToolIcons}
+                  content={content}
+                />
+              )
+            }
+            {
+              !!allFiles?.length && (
+                <FileList
+                  className='my-1'
+                  files={allFiles}
+                  showDeleteAction={false}
+                  showDownloadAction
+                  canPreview
+                />
+              )
+            }
+            {
+              !!message_files?.length && (
+                <FileList
+                  className='my-1'
+                  files={message_files}
+                  showDeleteAction={false}
+                  showDownloadAction
+                  canPreview
                 />
               )
             }
@@ -172,6 +213,17 @@ const Answer: FC<AnswerProps> = ({
             {
               !!citation?.length && !responding && (
                 <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
+              )
+            }
+            {
+              item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && (
+                <ContentSwitch
+                  count={item.siblingCount}
+                  currentIndex={item.siblingIndex}
+                  prevDisabled={!item.prevSibling}
+                  nextDisabled={!item.nextSibling}
+                  switchSibling={handleSwitchSibling}
+                />
               )
             }
           </div>

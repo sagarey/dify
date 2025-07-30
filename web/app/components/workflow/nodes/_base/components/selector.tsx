@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useBoolean, useClickAway } from 'ahooks'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 type Item = {
@@ -10,7 +10,8 @@ type Item = {
   label: string
 }
 type Props = {
-  trigger?: JSX.Element
+  className?: string
+  trigger?: React.JSX.Element
   DropDownIcon?: any
   noLeft?: boolean
   options: Item[]
@@ -27,6 +28,7 @@ type Props = {
 }
 
 const TypeSelector: FC<Props> = ({
+  className,
   trigger,
   DropDownIcon = ChevronSelectorVertical,
   noLeft,
@@ -50,11 +52,12 @@ const TypeSelector: FC<Props> = ({
     setHide()
   }, ref)
   return (
-    <div className={cn(!trigger && !noLeft && 'left-[-8px]', 'relative')} ref={ref}>
+    <div className={cn(!trigger && !noLeft && 'left-[-8px]', 'relative select-none', className)} ref={ref}>
       {trigger
         ? (
           <div
             onClick={toggleShow}
+            className={cn(!readonly && 'cursor-pointer')}
           >
             {trigger}
           </div>
@@ -62,14 +65,14 @@ const TypeSelector: FC<Props> = ({
         : (
           <div
             onClick={toggleShow}
-            className={cn(showOption && 'bg-black/5', 'flex items-center h-5 pl-1 pr-0.5 rounded-md text-xs font-semibold text-gray-700 cursor-pointer hover:bg-black/5')}>
-            <div className={cn(triggerClassName, 'text-sm font-semibold', uppercase && 'uppercase', noValue && 'text-gray-400')}>{!noValue ? item?.label : placeholder}</div>
-            {!readonly && <DropDownIcon className='w-3 h-3 ' />}
+            className={cn(showOption && 'bg-state-base-hover', 'flex h-5 cursor-pointer items-center rounded-md pl-1 pr-0.5 text-xs font-semibold text-text-secondary hover:bg-state-base-hover')}>
+            <div className={cn('text-sm font-semibold', uppercase && 'uppercase', noValue && 'text-text-tertiary', triggerClassName)}>{!noValue ? item?.label : placeholder}</div>
+            {!readonly && <DropDownIcon className='h-3 w-3 ' />}
           </div>
         )}
 
       {(showOption && !readonly) && (
-        <div className={cn(popupClassName, 'absolute z-10 top-[24px] w-[120px]  p-1 border border-gray-200 shadow-lg rounded-lg bg-white')}>
+        <div className={cn('absolute top-[24px] z-10 w-[120px]  select-none rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg', popupClassName)}>
           {list.map(item => (
             <div
               key={item.value}
@@ -77,10 +80,10 @@ const TypeSelector: FC<Props> = ({
                 setHide()
                 onChange(item.value)
               }}
-              className={cn(itemClassName, uppercase && 'uppercase', 'flex items-center h-[30px] justify-between min-w-[44px] px-3 rounded-lg cursor-pointer text-[13px] font-medium text-gray-700 hover:bg-gray-50')}
+              className={cn(itemClassName, uppercase && 'uppercase', 'flex h-[30px] min-w-[44px] cursor-pointer items-center justify-between rounded-lg px-3 text-[13px] font-medium text-text-secondary hover:bg-state-base-hover')}
             >
               <div>{item.label}</div>
-              {showChecked && item.value === value && <Check className='text-primary-600 w-4 h-4' />}
+              {showChecked && item.value === value && <Check className='h-4 w-4 text-text-primary' />}
             </div>
           ))
           }

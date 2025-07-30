@@ -198,6 +198,33 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'Upload de Arquivo',
+      description: 'A caixa de entrada do chat permite fazer upload de imagens, documentos e outros arquivos.',
+      supportedTypes: 'Tipos de Arquivo Suportados',
+      numberLimit: 'Máximo de uploads',
+      modalTitle: 'Configuração de Upload de Arquivo',
+    },
+    imageUpload: {
+      title: 'Upload de Imagem',
+      description: 'Permite fazer upload de imagens.',
+      supportedTypes: 'Tipos de Arquivo Suportados',
+      numberLimit: 'Máximo de uploads',
+      modalTitle: 'Configuração de Upload de Imagem',
+    },
+    bar: {
+      empty: 'Habilitar recursos para melhorar a experiência do usuário do aplicativo web',
+      enableText: 'Recursos Habilitados',
+      manage: 'Gerenciar',
+    },
+    documentUpload: {
+      title: 'Documento',
+      description: 'Habilitar Documento permitirá que o modelo aceite documentos e responda perguntas sobre eles.',
+    },
+    audioUpload: {
+      title: 'Áudio',
+      description: 'Habilitar Áudio permitirá que o modelo processe arquivos de áudio para transcrição e análise.',
+    },
   },
   automatic: {
     title: 'Orquestração Automatizada de Aplicativos',
@@ -254,18 +281,18 @@ const translation = {
     typeSelect: 'Selecionar',
   },
   varKeyError: {
-    canNoBeEmpty: 'A chave da variável não pode estar vazia',
-    tooLong: 'A chave da variável: {{key}} é muito longa. Não pode ter mais de 30 caracteres',
-    notValid: 'A chave da variável: {{key}} é inválida. Pode conter apenas letras, números e sublinhados',
-    notStartWithNumber: 'A chave da variável: {{key}} não pode começar com um número',
-    keyAlreadyExists: 'A chave da variável: :{{key}} já existe',
+    canNoBeEmpty: '{{key}} é obrigatório',
+    tooLong: '{{key}} é muito longa. Não pode ter mais de 30 caracteres',
+    notValid: '{{key}} é inválida. Pode conter apenas letras, números e sublinhados',
+    notStartWithNumber: '{{key}} não pode começar com um número',
+    keyAlreadyExists: '{{key}} já existe',
   },
   otherError: {
     promptNoBeEmpty: 'A solicitação não pode estar vazia',
     historyNoBeEmpty: 'O histórico da conversa deve ser definido na solicitação',
     queryNoBeEmpty: 'A consulta deve ser definida na solicitação',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Adicionar Campo de Entrada',
     'editModalTitle': 'Editar Campo de Entrada',
     'description': 'Configuração para a variável {{varName}}',
@@ -285,13 +312,16 @@ const translation = {
     'labelName': 'Nome do Rótulo',
     'inputPlaceholder': 'Por favor, insira',
     'required': 'Obrigatório',
+    'hide': 'Ocultar',
     'errorMsg': {
-      varNameRequired: 'O nome da variável é obrigatório',
       labelNameRequired: 'O nome do rótulo é obrigatório',
       varNameCanBeRepeat: 'O nome da variável não pode ser repetido',
       atLeastOneOption: 'Pelo menos uma opção é obrigatória',
       optionRepeat: 'Tem opções repetidas',
     },
+    'defaultValue': 'Valor padrão',
+    'noDefaultValue': 'Nenhum valor padrão',
+    'selectDefaultValue': 'Selecionar valor padrão',
   },
   vision: {
     name: 'Visão',
@@ -322,6 +352,9 @@ const translation = {
       language: 'línguas',
       resolutionTooltip: 'Texto para voz timbre suporta idiomas.',
       voice: 'voz',
+      autoPlay: 'Reprodução automática',
+      autoPlayEnabled: 'ligar',
+      autoPlayDisabled: 'fecho',
     },
   },
   openingStatement: {
@@ -330,6 +363,7 @@ const translation = {
     writeOpener: 'Escrever abertura',
     placeholder: 'Escreva sua mensagem de abertura aqui, você pode usar variáveis, tente digitar {{variável}}.',
     openingQuestion: 'Perguntas de Abertura',
+    openingQuestionPlaceholder: 'Você pode usar variáveis, tente digitar {{variable}}.',
     noDataPlaceHolder:
       'Iniciar a conversa com o usuário pode ajudar a IA a estabelecer uma conexão mais próxima com eles em aplicativos de conversação.',
     varTip: 'Você pode usar variáveis, tente digitar {{variável}}',

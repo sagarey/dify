@@ -1,20 +1,21 @@
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import classNames from 'classnames'
 import { useDebounceFn } from 'ahooks'
 import type { CustomConfigurationModelFixedFields, ModelItem, ModelProvider } from '../declarations'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
 import ModelBadge from '../model-badge'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
+import classNames from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Switch from '@/app/components/base/switch'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
 import { disableModel, enableModel } from '@/service/common'
 import { Plan } from '@/app/components/billing/type'
+import { useAppContext } from '@/context/app-context'
 
 export type ModelListItemProps = {
   model: ModelItem
@@ -28,6 +29,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const toggleModelEnablingStatus = useCallback(async (enabled: boolean) => {
     if (enabled)
@@ -46,49 +48,51 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
     <div
       key={model.model}
       className={classNames(
-        'group flex items-center pl-2 pr-2.5 h-8 rounded-lg',
-        isConfigurable && 'hover:bg-gray-50',
+        'group flex h-8 items-center rounded-lg pl-2 pr-2.5',
+        isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover',
         model.deprecated && 'opacity-60',
       )}
     >
       <ModelIcon
-        className='shrink-0 mr-2'
+        className='mr-2 shrink-0'
         provider={provider}
         modelName={model.model}
       />
       <ModelName
-        className='grow text-sm font-normal text-gray-900'
+        className='system-md-regular grow text-text-secondary'
         modelItem={model}
         showModelType
         showMode
         showContextSize
       >
         {modelLoadBalancingEnabled && !model.deprecated && model.load_balancing_enabled && (
-          <ModelBadge className='ml-1 uppercase text-indigo-600 border-indigo-300'>
-            <Balance className='w-3 h-3 mr-0.5' />
+          <ModelBadge className='ml-1 border-text-accent-secondary uppercase text-text-accent-secondary'>
+            <Balance className='mr-0.5 h-3 w-3' />
             {t('common.modelProvider.loadBalancingHeadline')}
           </ModelBadge>
         )}
       </ModelName>
-      <div className='shrink-0 flex items-center'>
+      <div className='flex shrink-0 items-center'>
         {
           model.fetch_from === ConfigurationMethodEnum.customizableModel
-            ? (
+            ? (isCurrentWorkspaceManager && (
               <Button
-                className='hidden group-hover:flex py-0 h-7 text-xs font-medium text-gray-700'
+                size='small'
+                className='hidden group-hover:flex'
                 onClick={() => onConfig({ __model_name: model.model, __model_type: model.model_type })}
               >
-                <Settings01 className='mr-[5px] w-3.5 h-3.5' />
+                <Settings01 className='mr-1 h-3.5 w-3.5' />
                 {t('common.modelProvider.config')}
               </Button>
-            )
-            : ((modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status))
+            ))
+            : (isCurrentWorkspaceManager && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status))
               ? (
                 <Button
-                  className='opacity-0 group-hover:opacity-100 px-3 h-[28px] text-xs text-gray-700 rounded-md transition-opacity'
+                  size='small'
+                  className='opacity-0 transition-opacity group-hover:opacity-100'
                   onClick={() => onModifyLoadBalancing?.(model)}
                 >
-                  <Balance className='mr-1 w-[14px] h-[14px]' />
+                  <Balance className='mr-1 h-3.5 w-3.5' />
                   {t('common.modelProvider.configLoadBalancing')}
                 </Button>
               )
@@ -97,11 +101,15 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
         {
           model.deprecated
             ? (
-              <TooltipPlus popupContent={<span className='font-semibold'>{t('common.modelProvider.modelHasBeenDeprecated')}</span>} offset={{ mainAxis: 4 }}>
+              <Tooltip
+                popupContent={
+                  <span className='font-semibold'>{t('common.modelProvider.modelHasBeenDeprecated')}</span>} offset={{ mainAxis: 4 }
+                }
+              >
                 <Switch defaultValue={false} disabled size='md' />
-              </TooltipPlus>
+              </Tooltip>
             )
-            : (
+            : (isCurrentWorkspaceManager && (
               <Switch
                 className='ml-2'
                 defaultValue={model?.status === ModelStatusEnum.active}
@@ -109,7 +117,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
                 size='md'
                 onChange={onEnablingStateChange}
               />
-            )
+            ))
         }
       </div>
     </div>

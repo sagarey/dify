@@ -4,19 +4,22 @@ import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
-import cn from 'classnames'
+import {
+  RiAddLine,
+  RiCloseLine,
+} from '@remixicon/react'
 import { useMount } from 'ahooks'
 import type { Collection, CustomCollectionBackend, Tool } from '../types'
 import Type from './type'
 import Category from './category'
 import Tools from './tools'
+import cn from '@/utils/classnames'
+import { basePath } from '@/utils/var'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
 import Drawer from '@/app/components/base/drawer'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import SearchInput from '@/app/components/base/search-input'
-import { Plus, XClose } from '@/app/components/base/icons/src/vender/line/general'
+import Input from '@/app/components/base/input'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import {
@@ -41,18 +44,26 @@ const AddToolModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
   const [currentType, setCurrentType] = useState('builtin')
   const [currentCategory, setCurrentCategory] = useState('')
   const [keywords, setKeywords] = useState<string>('')
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
   }
+  const isMatchingKeywords = (text: string, keywords: string) => {
+    return text.toLowerCase().includes(keywords.toLowerCase())
+  }
   const [toolList, setToolList] = useState<ToolWithProvider[]>([])
   const [listLoading, setListLoading] = useState(true)
   const getAllTools = async () => {
     setListLoading(true)
     const buildInTools = await fetchAllBuiltInTools()
+    if (basePath) {
+      buildInTools.forEach((item) => {
+        if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+          item.icon = `${basePath}${item.icon}`
+      })
+    }
     const customTools = await fetchAllCustomTools()
     const workflowTools = await fetchAllWorkflowTools()
     const mergedToolList = [
@@ -79,11 +90,16 @@ const AddToolModal: FC<Props> = ({
       else
         return toolWithProvider.labels.includes(currentCategory)
     }).filter((toolWithProvider) => {
-      return toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(keywords.toLowerCase())
-      })
+      return (
+        isMatchingKeywords(toolWithProvider.name, keywords)
+        || toolWithProvider.tools.some((tool) => {
+          return Object.values(tool.label).some((label) => {
+            return isMatchingKeywords(label, keywords)
+          })
+        })
+      )
     })
-  }, [currentType, currentCategory, toolList, keywords, language])
+  }, [currentType, currentCategory, toolList, keywords])
 
   const {
     modelConfig,
@@ -162,37 +178,43 @@ const AddToolModal: FC<Props> = ({
         clickOutsideNotOpen
         onClose={onHide}
         footer={null}
-        panelClassname={cn('mt-16 mx-2 sm:mr-2 mb-3 !p-0 rounded-xl', 'mt-2 !w-[640px]', '!max-w-[640px]')}
+        panelClassName={cn('mx-2 mb-3 mt-16 rounded-xl !p-0 sm:mr-2', 'mt-2 !w-[640px]', '!max-w-[640px]')}
       >
         <div
-          className='w-full flex bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl'
+          className='flex w-full rounded-xl border-[0.5px] border-gray-200 bg-white shadow-xl'
           style={{
             height: 'calc(100vh - 16px)',
           }}
         >
-          <div className='relative shrink-0 w-[200px] pb-3 bg-gray-100 rounded-l-xl border-r-[0.5px] border-black/2 overflow-y-auto'>
-            <div className='sticky top-0 left-0 right-0'>
-              <div className='sticky top-0 left-0 right-0 px-5 py-3 text-md font-semibold text-gray-900'>{t('tools.addTool')}</div>
-              <div className='px-3 pt-2 pb-4'>
-                <Button type='primary' className='w-[176px] text-[13px] leading-[18px] font-medium' onClick={() => setIsShowEditCustomCollectionModal(true)}>
-                  <Plus className='w-4 h-4 mr-1'/>
+          <div className='relative w-[200px] shrink-0 overflow-y-auto rounded-l-xl border-r-[0.5px] border-black/2 bg-gray-100 pb-3'>
+            <div className='sticky left-0 right-0 top-0'>
+              <div className='text-md sticky left-0 right-0 top-0 px-5 py-3 font-semibold text-gray-900'>{t('tools.addTool')}</div>
+              <div className='px-3 pb-4 pt-2'>
+                <Button variant='primary' className='w-[176px]' onClick={() => setIsShowEditCustomCollectionModal(true)}>
+                  <RiAddLine className='mr-1 h-4 w-4' />
                   {t('tools.createCustomTool')}
                 </Button>
               </div>
             </div>
             <div className='px-2 py-1'>
-              <Type value={currentType} onSelect={setCurrentType}/>
-              <Category value={currentCategory} onSelect={setCurrentCategory}/>
+              <Type value={currentType} onSelect={setCurrentType} />
+              <Category value={currentCategory} onSelect={setCurrentCategory} />
             </div>
           </div>
-          <div className='relative grow bg-white rounded-r-xl overflow-y-auto'>
-            <div className='z-10 sticky top-0 left-0 right-0 p-2 flex items-center gap-1 bg-white'>
+          <div className='relative grow overflow-y-auto rounded-r-xl bg-white'>
+            <div className='sticky left-0 right-0 top-0 z-10 flex items-center gap-1 bg-white p-2'>
               <div className='grow'>
-                <SearchInput className='w-full' value={keywords} onChange={handleKeywordsChange} />
+                <Input
+                  showLeftIcon
+                  showClearIcon
+                  value={keywords}
+                  onChange={e => handleKeywordsChange(e.target.value)}
+                  onClear={() => handleKeywordsChange('')}
+                />
               </div>
-              <div className='ml-2 mr-1 w-[1px] h-4 bg-gray-200'></div>
-              <div className='p-2 cursor-pointer' onClick={onHide}>
-                <XClose className='w-4 h-4 text-gray-500' />
+              <div className='ml-2 mr-1 h-4 w-[1px] bg-gray-200'></div>
+              <div className='cursor-pointer p-2' onClick={onHide}>
+                <RiCloseLine className='h-4 w-4 text-gray-500' />
               </div>
             </div>
             {listLoading && (

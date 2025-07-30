@@ -5,24 +5,22 @@ from libs.login import login_required
 from services.feature_service import FeatureService
 
 from . import api
-from .setup import setup_required
-from .wraps import account_initialization_required, cloud_utm_record
+from .wraps import account_initialization_required, cloud_utm_record, setup_required
 
 
 class FeatureApi(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_utm_record
     def get(self):
-        return FeatureService.get_features(current_user.current_tenant_id).dict()
+        return FeatureService.get_features(current_user.current_tenant_id).model_dump()
 
 
 class SystemFeatureApi(Resource):
     def get(self):
-        return FeatureService.get_system_features().dict()
+        return FeatureService.get_system_features().model_dump()
 
 
-api.add_resource(FeatureApi, '/features')
-api.add_resource(SystemFeatureApi, '/system-features')
+api.add_resource(FeatureApi, "/features")
+api.add_resource(SystemFeatureApi, "/system-features")

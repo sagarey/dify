@@ -13,7 +13,7 @@ import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
-import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 // import TreeView from './plugins/tree-view'
@@ -59,12 +59,14 @@ import {
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import cn from '@/utils/classnames'
 
 export type PromptEditorProps = {
   instanceId?: string
   compact?: boolean
+  wrapperClassName?: string
   className?: string
-  placeholder?: string
+  placeholder?: string | JSX.Element
   placeholderClassName?: string
   style?: React.CSSProperties
   value?: string
@@ -78,11 +80,13 @@ export type PromptEditorProps = {
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  isSupportFileVar?: boolean
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
   instanceId,
   compact,
+  wrapperClassName,
   className,
   placeholder,
   placeholderClassName,
@@ -98,6 +102,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
+  isSupportFileVar,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -122,9 +127,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
   }
 
   const handleEditorChange = (editorState: EditorState) => {
-    const text = editorState.read(() => $getRoot().getTextContent())
+    const text = editorState.read(() => {
+      return $getRoot().getChildren().map(p => p.getTextContent()).join('\n')
+    })
     if (onChange)
-      onChange(text.replaceAll('\n\n', '\n'))
+      onChange(text)
   }
 
   useEffect(() => {
@@ -142,10 +149,25 @@ const PromptEditor: FC<PromptEditorProps> = ({
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
-      <div className='relative h-full'>
+      <div className={cn('relative', wrapperClassName)}>
         <RichTextPlugin
-          contentEditable={<ContentEditable className={`${className} outline-none ${compact ? 'leading-5 text-[13px]' : 'leading-6 text-sm'} text-gray-700`} style={style || {}} />}
-          placeholder={<Placeholder value={placeholder} className={placeholderClassName} compact={compact} />}
+          contentEditable={
+            <ContentEditable
+              className={cn(
+                'text-text-secondary outline-none',
+                compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
+                className,
+              )}
+              style={style || {}}
+            />
+          }
+          placeholder={
+            <Placeholder
+              value={placeholder}
+              className={cn('truncate', placeholderClassName)}
+              compact={compact}
+            />
+          }
           ErrorBoundary={LexicalErrorBoundary}
         />
         <ComponentPickerBlock
@@ -156,6 +178,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          isSupportFileVar={isSupportFileVar}
         />
         <ComponentPickerBlock
           triggerString='{'
@@ -165,6 +188,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          isSupportFileVar={isSupportFileVar}
         />
         {
           contextBlock?.show && (

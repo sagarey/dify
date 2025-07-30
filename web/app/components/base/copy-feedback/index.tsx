@@ -1,21 +1,24 @@
 'use client'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiClipboardFill,
+  RiClipboardLine,
+} from '@remixicon/react'
 import { debounce } from 'lodash-es'
 import copy from 'copy-to-clipboard'
-import Tooltip from '../tooltip'
-import TooltipPlus from '../tooltip-plus'
 import copyStyle from './style.module.css'
+import Tooltip from '@/app/components/base/tooltip'
+import ActionButton from '@/app/components/base/action-button'
 
 type Props = {
   content: string
-  selectorId: string
   className?: string
 }
 
 const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
 
-const CopyFeedback = ({ content, selectorId, className }: Props) => {
+const CopyFeedback = ({ content }: Props) => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState<boolean>(false)
 
@@ -30,26 +33,21 @@ const CopyFeedback = ({ content, selectorId, className }: Props) => {
 
   return (
     <Tooltip
-      selector={`common-copy-feedback-${selectorId}`}
-      content={
+      popupContent={
         (isCopied
           ? t(`${prefixEmbedded}.copied`)
           : t(`${prefixEmbedded}.copy`)) || ''
       }
     >
-      <div
-        className={`w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg ${
-          className ?? ''
-        }`}
-        onMouseLeave={onMouseLeave}
-      >
+      <ActionButton>
         <div
           onClick={onClickCopy}
-          className={`w-full h-full ${copyStyle.copyIcon} ${
-            isCopied ? copyStyle.copied : ''
-          }`}
-        ></div>
-      </div>
+          onMouseLeave={onMouseLeave}
+        >
+          {isCopied && <RiClipboardFill className='h-4 w-4' />}
+          {!isCopied && <RiClipboardLine className='h-4 w-4' />}
+        </div>
+      </ActionButton>
     </Tooltip>
   )
 }
@@ -70,7 +68,7 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
   }, 100)
 
   return (
-    <TooltipPlus
+    <Tooltip
       popupContent={
         (isCopied
           ? t(`${prefixEmbedded}.copied`)
@@ -78,18 +76,16 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
       }
     >
       <div
-        className={`w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg ${
-          className ?? ''
+        className={`h-8 w-8 cursor-pointer rounded-lg hover:bg-components-button-ghost-bg-hover ${className ?? ''
         }`}
-        onMouseLeave={onMouseLeave}
       >
         <div
           onClick={onClickCopy}
-          className={`w-full h-full ${copyStyle.copyIcon} ${
-            isCopied ? copyStyle.copied : ''
+          onMouseLeave={onMouseLeave}
+          className={`h-full w-full ${copyStyle.copyIcon} ${isCopied ? copyStyle.copied : ''
           }`}
         ></div>
       </div>
-    </TooltipPlus>
+    </Tooltip>
   )
 }

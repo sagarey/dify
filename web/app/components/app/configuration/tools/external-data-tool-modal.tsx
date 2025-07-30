@@ -3,7 +3,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import FormGeneration from '../toolbox/moderation/form-generation'
+import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -12,13 +12,15 @@ import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/educatio
 import { fetchCodeBasedExtensionList } from '@/service/common'
 import { SimpleSelect } from '@/app/components/base/select'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 import type {
   CodeBasedExtensionItem,
   ExternalDataTool,
 } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
+import { noop } from 'lodash-es'
+import { useDocLink } from '@/context/i18n'
 
 const systemTypes = ['api']
 type ExternalDataToolModalProps = {
@@ -39,6 +41,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   onValidateBeforeSave,
 }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { notify } = useToastContext()
   const { locale } = useContext(I18n)
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
@@ -150,7 +153,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       return
     }
 
-    if (localeData.variable && !/[a-zA-Z_][a-zA-Z0-9_]{0,29}/g.test(localeData.variable)) {
+    if (localeData.variable && !/[a-zA-Z_]\w{0,29}/g.test(localeData.variable)) {
       notify({ type: 'error', message: t('appDebug.varKeyError.notValid', { key: t('appDebug.feature.tools.modal.variableName.title') }) })
       return
     }
@@ -172,12 +175,12 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       }
     }
 
-    const formatedData = formatData(localeData)
+    const formattedData = formatData(localeData)
 
-    if (onValidateBeforeSave && !onValidateBeforeSave(formatedData))
+    if (onValidateBeforeSave && !onValidateBeforeSave(formattedData))
       return
 
-    onSave(formatData(formatedData))
+    onSave(formatData(formattedData))
   }
 
   const action = data.type ? t('common.operation.edit') : t('common.operation.add')
@@ -185,15 +188,14 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   return (
     <Modal
       isShow
-      onClose={() => { }}
-      wrapperClassName='z-[101]'
-      className='!p-8 !pb-6 !max-w-none !w-[640px]'
+      onClose={noop}
+      className='!w-[640px] !max-w-none !p-8 !pb-6'
     >
       <div className='mb-2 text-xl font-semibold text-gray-900'>
-        {`${action} ${t('appDebug.variableConig.apiBasedVar')}`}
+        {`${action} ${t('appDebug.variableConfig.apiBasedVar')}`}
       </div>
       <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-gray-900'>
+        <div className='text-sm font-medium leading-9 text-gray-900'>
           {t('common.apiBasedExtension.type')}
         </div>
         <SimpleSelect
@@ -208,46 +210,46 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         />
       </div>
       <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-gray-900'>
+        <div className='text-sm font-medium leading-9 text-gray-900'>
           {t('appDebug.feature.tools.modal.name.title')}
         </div>
         <div className='flex items-center'>
           <input
             value={localeData.label || ''}
             onChange={e => handleValueChange({ label: e.target.value })}
-            className='grow block mr-2 px-3 h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
+            className='mr-2 block h-9 grow appearance-none rounded-lg bg-gray-100 px-3 text-sm text-gray-900 outline-none'
             placeholder={t('appDebug.feature.tools.modal.name.placeholder') || ''}
           />
           <AppIcon size='large'
             onClick={() => { setShowEmojiPicker(true) }}
-            className='!w-9 !h-9 rounded-lg border-[0.5px] border-black/5 cursor-pointer '
+            className='!h-9 !w-9 cursor-pointer rounded-lg border-[0.5px] border-black/5 '
             icon={localeData.icon}
             background={localeData.icon_background}
           />
         </div>
       </div>
       <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-gray-900'>
+        <div className='text-sm font-medium leading-9 text-gray-900'>
           {t('appDebug.feature.tools.modal.variableName.title')}
         </div>
         <input
           value={localeData.variable || ''}
           onChange={e => handleValueChange({ variable: e.target.value })}
-          className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
+          className='block h-9 w-full appearance-none rounded-lg bg-gray-100 px-3 text-sm text-gray-900 outline-none'
           placeholder={t('appDebug.feature.tools.modal.variableName.placeholder') || ''}
         />
       </div>
       {
         localeData.type === 'api' && (
           <div className='py-2'>
-            <div className='flex justify-between items-center h-9 text-sm font-medium text-gray-900'>
+            <div className='flex h-9 items-center justify-between text-sm font-medium text-gray-900'>
               {t('common.apiBasedExtension.selector.title')}
               <a
-                href={t('common.apiBasedExtension.linkUrl') || '/'}
+                href={docLink('/guides/extension/api-based-extension/README')}
                 target='_blank' rel='noopener noreferrer'
                 className='group flex items-center text-xs font-normal text-gray-500 hover:text-primary-600'
               >
-                <BookOpen01 className='mr-1 w-3 h-3 text-gray-500 group-hover:text-primary-600' />
+                <BookOpen01 className='mr-1 h-3 w-3 text-gray-500 group-hover:text-primary-600' />
                 {t('common.apiBasedExtension.link')}
               </a>
             </div>
@@ -269,16 +271,15 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           />
         )
       }
-      <div className='flex items-center justify-end mt-6'>
+      <div className='mt-6 flex items-center justify-end'>
         <Button
           onClick={onCancel}
-          className='mr-2 text-sm font-medium'
+          className='mr-2'
         >
           {t('common.operation.cancel')}
         </Button>
         <Button
-          type='primary'
-          className='text-sm font-medium'
+          variant='primary'
           onClick={handleSave}
         >
           {t('common.operation.save')}
@@ -287,7 +288,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       {
         showEmojiPicker && (
           <EmojiPicker
-            className='!z-[200]'
             onSelect={(icon, icon_background) => {
               handleValueChange({ icon, icon_background })
               setShowEmojiPicker(false)

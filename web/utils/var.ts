@@ -1,11 +1,16 @@
-import { MAX_VAR_KEY_LENGHT, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW, getMaxVarNameLength } from '@/config'
-import { CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
+import { MARKETPLACE_URL_PREFIX, MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW, getMaxVarNameLength } from '@/config'
+import {
+  CONTEXT_PLACEHOLDER_TEXT,
+  HISTORY_PLACEHOLDER_TEXT,
+  PRE_PROMPT_PLACEHOLDER_TEXT,
+  QUERY_PLACEHOLDER_TEXT,
+} from '@/app/components/base/prompt-editor/constants'
 import { InputVarType } from '@/app/components/workflow/types'
 
-const otherAllowedRegex = /^[a-zA-Z0-9_]+$/
+const otherAllowedRegex = /^\w+$/
 
 export const getNewVar = (key: string, type: string) => {
-  const { max_length, ...rest } = VAR_ITEM_TEMPLATE
+  const { ...rest } = VAR_ITEM_TEMPLATE
   if (type !== 'string') {
     return {
       ...rest,
@@ -47,11 +52,11 @@ export const checkKey = (key: string, canBeEmpty?: boolean) => {
   if (canBeEmpty && key === '')
     return true
 
-  if (key.length > MAX_VAR_KEY_LENGHT)
+  if (key.length > MAX_VAR_KEY_LENGTH)
     return 'tooLong'
 
   if (otherAllowedRegex.test(key)) {
-    if (/[0-9]/.test(key[0]))
+    if (/\d/.test(key[0]))
       return 'notStartWithNumber'
 
     return true
@@ -77,7 +82,7 @@ export const checkKeys = (keys: string[], canBeEmpty?: boolean) => {
   return { isValid, errorKey, errorMessageKey }
 }
 
-const varRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g
+const varRegex = /\{\{([a-zA-Z_]\w*)\}\}/g
 export const getVars = (value: string) => {
   if (!value)
     return []
@@ -86,7 +91,7 @@ export const getVars = (value: string) => {
     return ![CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT].includes(item)
   }).map((item) => {
     return item.replace('{{', '').replace('}}', '')
-  }).filter(key => key.length <= MAX_VAR_KEY_LENGHT) || []
+  }).filter(key => key.length <= MAX_VAR_KEY_LENGTH) || []
   const keyObj: Record<string, boolean> = {}
   // remove duplicate keys
   const res: string[] = []
@@ -98,4 +103,30 @@ export const getVars = (value: string) => {
     res.push(key)
   })
   return res
+}
+
+// Set the value of basePath
+// example: /dify
+export const basePath = ''
+
+export function getMarketplaceUrl(path: string, params?: Record<string, string | undefined>) {
+  const searchParams = new URLSearchParams({ source: encodeURIComponent(window.location.origin) })
+  if (params) {
+    Object.keys(params).forEach((key) => {
+      const value = params[key]
+      if (value !== undefined && value !== null)
+        searchParams.append(key, value)
+    })
+  }
+  return `${MARKETPLACE_URL_PREFIX}${path}?${searchParams.toString()}`
+}
+
+export const replaceSpaceWithUnderscreInVarNameInput = (input: HTMLInputElement) => {
+  const start = input.selectionStart
+  const end = input.selectionEnd
+
+  input.value = input.value.replaceAll(' ', '_')
+
+  if (start !== null && end !== null)
+    input.setSelectionRange(start, end)
 }

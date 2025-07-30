@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
-import cn from 'classnames'
-import s from './base.module.css'
+import { RiEqualizer2Line } from '@remixicon/react'
 import WorkspaceSelector from './workspace-selector'
 import SearchInput from './search-input'
 import PageSelector from './page-selector'
@@ -39,12 +38,15 @@ const NotionPageSelector = ({
   const firstWorkspaceId = notionWorkspaces[0]?.workspace_id
   const currentWorkspace = notionWorkspaces.find(workspace => workspace.workspace_id === currentWorkspaceId)
 
-  const getPagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>] = useMemo(() => {
+  const getPagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] = useMemo(() => {
     const selectedPagesId = new Set<string>()
+    const boundPagesId = new Set<string>()
     const pagesMap = notionWorkspaces.reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
       next.pages.forEach((page) => {
-        if (page.is_bound)
+        if (page.is_bound) {
           selectedPagesId.add(page.page_id)
+          boundPagesId.add(page.page_id)
+        }
         prev[page.page_id] = {
           ...page,
           workspace_id: next.workspace_id,
@@ -53,7 +55,7 @@ const NotionPageSelector = ({
 
       return prev
     }, {})
-    return [pagesMap, selectedPagesId]
+    return [pagesMap, selectedPagesId, boundPagesId]
   }, [notionWorkspaces])
   const defaultSelectedPagesId = [...Array.from(getPagesMapAndSelectedPagesId[1]), ...(value || [])]
   const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
@@ -69,7 +71,7 @@ const NotionPageSelector = ({
   const handleSelectWorkspace = useCallback((workspaceId: string) => {
     setCurrentWorkspaceId(workspaceId)
   }, [])
-  const handleSelecPages = (newSelectedPagesId: Set<string>) => {
+  const handleSelectPages = (newSelectedPagesId: Set<string>) => {
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => getPagesMapAndSelectedPagesId[0][pageId])
 
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
@@ -85,35 +87,37 @@ const NotionPageSelector = ({
   }, [firstWorkspaceId])
 
   return (
-    <div className='bg-gray-25 border border-gray-200 rounded-xl'>
+    <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
       {
         data?.notion_info?.length
           ? (
             <>
-              <div className='flex items-center pl-[10px] pr-2 h-11 bg-white border-b border-b-gray-200 rounded-t-xl'>
-                <WorkspaceSelector
-                  value={currentWorkspaceId || firstWorkspaceId}
-                  items={notionWorkspaces}
-                  onSelect={handleSelectWorkspace}
-                />
-                <div className='mx-1 w-[1px] h-3 bg-gray-200' />
-                <div
-                  className={cn(s['setting-icon'], 'w-6 h-6 cursor-pointer')}
-                  onClick={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })}
-                />
-                <div className='grow' />
+              <div className='flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2'>
+                <div className='flex grow items-center gap-x-1'>
+                  <WorkspaceSelector
+                    value={currentWorkspaceId || firstWorkspaceId}
+                    items={notionWorkspaces}
+                    onSelect={handleSelectWorkspace}
+                  />
+                  <div className='mx-1 h-3 w-[1px] bg-divider-regular' />
+                  <RiEqualizer2Line
+                    className='h-4 w-4 cursor-pointer text-text-tertiary'
+                    onClick={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })}
+                  />
+                </div>
                 <SearchInput
                   value={searchValue}
                   onChange={handleSearchValueChange}
                 />
               </div>
-              <div className='rounded-b-xl overflow-hidden'>
+              <div className='overflow-hidden rounded-b-xl'>
                 <PageSelector
                   value={selectedPagesId}
+                  disabledValue={getPagesMapAndSelectedPagesId[2]}
                   searchValue={searchValue}
                   list={currentWorkspace?.pages || []}
                   pagesMap={getPagesMapAndSelectedPagesId[0]}
-                  onSelect={handleSelecPages}
+                  onSelect={handleSelectPages}
                   canPreview={canPreview}
                   previewPageId={previewPageId}
                   onPreview={handlePreviewPage}

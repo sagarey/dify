@@ -1,13 +1,13 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import Field from '../_base/components/field'
 import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confirm'
 import useConfig from './use-config'
 import type { VariableAssignerNodeType } from './types'
 import VarGroupItem from './components/var-group-item'
-import { type NodePanelProps } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Switch from '@/app/components/base/switch'
@@ -39,7 +39,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
         {!isEnableGroup
           ? (
             <VarGroupItem
@@ -51,7 +51,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
               }}
               onChange={handleListOrTypeChange}
               groupEnabled={false}
-              availableVars={getAvailableVars(id, 'target', filterVar(inputs.output_type))}
+              availableVars={getAvailableVars(id, 'target', filterVar(inputs.output_type), true)}
             />
           )
           : (<div>
@@ -67,7 +67,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
                     canRemove={!readOnly && inputs.advanced_settings?.groups.length > 1}
                     onRemove={handleGroupRemoved(item.groupId)}
                     onGroupNameChange={handleVarGroupNameChange(item.groupId)}
-                    availableVars={getAvailableVars(id, item.groupId, filterVar(item.output_type))}
+                    availableVars={getAvailableVars(id, item.groupId, filterVar(item.output_type), true)}
                   />
                   {index !== inputs.advanced_settings?.groups.length - 1 && <Split className='my-4' />}
                 </div>
@@ -99,22 +99,20 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
       {isEnableGroup && (
         <>
           <Split />
-          <div className='px-4 pt-4 pb-2'>
-            <OutputVars>
-              <>
-                {inputs.advanced_settings?.groups.map((item, index) => (
-                  <VarItem
-                    key={index}
-                    name={`${item.group_name}.output`}
-                    type={item.output_type}
-                    description={t(`${i18nPrefix}.outputVars.varDescribe`, {
-                      groupName: item.group_name,
-                    })}
-                  />
-                ))}
-              </>
-            </OutputVars>
-          </div>
+          <OutputVars>
+            <>
+              {inputs.advanced_settings?.groups.map((item, index) => (
+                <VarItem
+                  key={index}
+                  name={`${item.group_name}.output`}
+                  type={item.output_type}
+                  description={t(`${i18nPrefix}.outputVars.varDescribe`, {
+                    groupName: item.group_name,
+                  })}
+                />
+              ))}
+            </>
+          </OutputVars>
         </>
       )}
       <RemoveEffectVarConfirm

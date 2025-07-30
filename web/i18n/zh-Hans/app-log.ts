@@ -4,8 +4,9 @@ const translation = {
   dateTimeFormat: 'YYYY-MM-DD HH:mm',
   table: {
     header: {
-      time: '时间',
-      endUser: '用户',
+      updatedTime: '更新时间',
+      time: '创建时间',
+      endUser: '用户或账户',
       input: '输入',
       output: '输出',
       summary: '标题',
@@ -16,7 +17,7 @@ const translation = {
       status: '状态',
       runtime: '运行时间',
       tokens: 'TOKENS',
-      user: '用户',
+      user: '用户或账户',
       version: '版本',
     },
     pagination: {
@@ -28,7 +29,7 @@ const translation = {
       noOutput: '无输出',
       element: {
         title: '这里有人吗',
-        content: '在这里观测和标注最终用户和 AI 应用程序之间的交互，以不断提高 AI 的准确性。您可以<testLink>试试</testLink> WebApp 或<shareLink>分享</shareLink>出去，然后返回此页面。',
+        content: '在这里观测和标注最终用户和 AI 应用程序之间的交互，以不断提高 AI 的准确性。您可以<testLink>试试</testLink> web app 或<shareLink>分享</shareLink>出去，然后返回此页面。',
       },
     },
   },
@@ -51,6 +52,7 @@ const translation = {
     },
     variables: '变量',
     uploadImages: '上传的图片',
+    modelParams: '模型参数',
   },
   filter: {
     period: {
@@ -69,12 +71,17 @@ const translation = {
       annotated: '已标注改进（{{count}} 项）',
       not_annotated: '未标注',
     },
+    sortBy: '排序：',
+    descending: '降序',
+    ascending: '升序',
   },
   workflowTitle: '日志',
   workflowSubtitle: '日志记录了应用的执行情况',
   runDetail: {
     title: '对话日志',
     workflowTitle: '日志详情',
+    fileListLabel: '文件详情',
+    fileListDetail: '详情',
   },
   promptLog: 'Prompt 日志',
   agentLog: 'Agent 日志',

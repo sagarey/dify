@@ -3,18 +3,19 @@ import { useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useUnmount } from 'ahooks'
-import cn from 'classnames'
+import { RiAddLine } from '@remixicon/react'
 import { useStore as useTagStore } from './store'
+import cn from '@/utils/classnames'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
-import SearchInput from '@/app/components/base/search-input'
+import Input from '@/app/components/base/input'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import Checkbox from '@/app/components/base/checkbox'
 import { bindTag, createTag, fetchTagList, unBindTag } from '@/service/tag'
 import { ToastContext } from '@/app/components/base/toast'
+import { noop } from 'lodash-es'
 
 type TagSelectorProps = {
   targetID: string
@@ -54,7 +55,7 @@ const Panel = (props: PanelProps) => {
     return tagList.filter(tag => tag.type === type && !value.includes(tag.id) && tag.name.includes(keywords))
   }, [type, tagList, value, keywords])
 
-  const [creating, setCreating] = useState<Boolean>(false)
+  const [creating, setCreating] = useState<boolean>(false)
   const createNewTag = async () => {
     if (!keywords)
       return
@@ -68,10 +69,11 @@ const Panel = (props: PanelProps) => {
         ...tagList,
         newTag,
       ])
+      setKeywords('')
       setCreating(false)
       onCreate()
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.tag.failed') })
       setCreating(false)
     }
@@ -81,7 +83,7 @@ const Panel = (props: PanelProps) => {
       await bindTag(tagIDs, targetID, type)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
@@ -90,7 +92,7 @@ const Panel = (props: PanelProps) => {
       await unBindTag(tagID, targetID, type)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
-    catch (e: any) {
+    catch {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
@@ -123,19 +125,23 @@ const Panel = (props: PanelProps) => {
     handleValueChange()
   })
 
-  const onMouseLeave = async () => {
-    props.onClose?.()
-  }
   return (
-    <div className='relative w-full bg-white rounded-lg border-[0.5px] border-gray-200' onMouseLeave={onMouseLeave}>
-      <div className='p-2 border-b-[0.5px] border-black/5'>
-        <SearchInput placeholder={t('common.tag.selectorPlaceholder') || ''} white value={keywords} onChange={handleKeywordsChange} />
+    <div className='relative w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-input-bg-hover'>
+      <div className='border-b-[0.5px] border-divider-regular p-2'>
+        <Input
+          showLeftIcon
+          showClearIcon
+          value={keywords}
+          placeholder={t('common.tag.selectorPlaceholder') || ''}
+          onChange={e => handleKeywordsChange(e.target.value)}
+          onClear={() => handleKeywordsChange('')}
+        />
       </div>
       {keywords && notExisted && (
         <div className='p-1'>
-          <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100' onClick={createNewTag}>
-            <Plus className='h-4 w-4 text-gray-500' />
-            <div className='grow text-sm text-gray-700 leading-5 truncate'>
+          <div className='flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover' onClick={createNewTag}>
+            <RiAddLine className='h-4 w-4 text-text-tertiary' />
+            <div className='grow truncate text-sm leading-5 text-text-secondary'>
               {`${t('common.tag.create')} `}
               <span className='font-medium'>{`"${keywords}"`}</span>
             </div>
@@ -143,53 +149,53 @@ const Panel = (props: PanelProps) => {
         </div>
       )}
       {keywords && notExisted && filteredTagList.length > 0 && (
-        <Divider className='!h-[1px] !my-0' />
+        <Divider className='!my-0 !h-[1px]' />
       )}
       {(filteredTagList.length > 0 || filteredSelectedTagList.length > 0) && (
-        <div className='p-1 max-h-[172px] overflow-y-auto'>
+        <div className='max-h-[172px] overflow-y-auto p-1'>
           {filteredSelectedTagList.map(tag => (
             <div
               key={tag.id}
-              className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'
+              className='flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover'
               onClick={() => selectTag(tag)}
             >
               <Checkbox
                 className='shrink-0'
                 checked={selectedTagIDs.includes(tag.id)}
-                onCheck={() => {}}
+                onCheck={noop}
               />
-              <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
+              <div title={tag.name} className='grow truncate text-sm leading-5 text-text-secondary'>{tag.name}</div>
             </div>
           ))}
           {filteredTagList.map(tag => (
             <div
               key={tag.id}
-              className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'
+              className='flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover'
               onClick={() => selectTag(tag)}
             >
               <Checkbox
                 className='shrink-0'
                 checked={selectedTagIDs.includes(tag.id)}
-                onCheck={() => {}}
+                onCheck={noop}
               />
-              <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
+              <div title={tag.name} className='grow truncate text-sm leading-5 text-text-secondary'>{tag.name}</div>
             </div>
           ))}
         </div>
       )}
       {!keywords && !filteredTagList.length && !filteredSelectedTagList.length && (
         <div className='p-1'>
-          <div className='p-3 flex flex-col items-center gap-1'>
-            <Tag03 className='h-6 w-6 text-gray-300' />
-            <div className='text-gray-500 text-xs leading-[14px]'>{t('common.tag.noTag')}</div>
+          <div className='flex flex-col items-center gap-1 p-3'>
+            <Tag03 className='h-6 w-6 text-text-quaternary' />
+            <div className='text-xs leading-[14px] text-text-tertiary'>{t('common.tag.noTag')}</div>
           </div>
         </div>
       )}
-      <Divider className='!h-[1px] !my-0' />
+      <Divider className='!my-0 !h-[1px]' />
       <div className='p-1'>
-        <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100' onClick={() => setShowTagManagementModal(true)}>
-          <Tag03 className='h-4 w-4 text-gray-500' />
-          <div className='grow text-sm text-gray-700 leading-5 truncate'>
+        <div className='flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover' onClick={() => setShowTagManagementModal(true)}>
+          <Tag03 className='h-4 w-4 text-text-tertiary' />
+          <div className='grow truncate text-sm leading-5 text-text-secondary'>
             {t('common.tag.manageTags')}
           </div>
         </div>
@@ -210,6 +216,7 @@ const TagSelector: FC<TagSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
 
+  const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
 
   const getTagList = async () => {
@@ -219,17 +226,17 @@ const TagSelector: FC<TagSelectorProps> = ({
 
   const triggerContent = useMemo(() => {
     if (selectedTags?.length)
-      return selectedTags.map(tag => tag.name).join(', ')
+      return selectedTags.filter(selectedTag => tagList.find(tag => tag.id === selectedTag.id)).map(tag => tag.name).join(', ')
     return ''
-  }, [selectedTags])
+  }, [selectedTags, tagList])
 
   const Trigger = () => {
     return (
       <div className={cn(
-        'group/tip relative w-full flex items-center gap-1 px-2 py-[7px] rounded-md cursor-pointer hover:bg-gray-100',
+        'group/tip relative flex w-full cursor-pointer items-center gap-1 rounded-md px-2 py-[7px] hover:bg-state-base-hover',
       )}>
-        <Tag01 className='shrink-0 w-3 h-3' />
-        <div className='grow text-xs text-start leading-[18px] font-normal truncate'>
+        <Tag01 className='h-3 w-3 shrink-0 text-components-input-text-placeholder' />
+        <div className='system-sm-regular grow truncate  text-start text-components-input-text-placeholder'>
           {!triggerContent ? t('common.tag.addTag') : triggerContent}
         </div>
       </div>
@@ -255,12 +262,12 @@ const TagSelector: FC<TagSelectorProps> = ({
           btnElement={<Trigger />}
           btnClassName={open =>
             cn(
-              open ? '!bg-gray-100 !text-gray-700' : '!bg-transparent',
-              '!w-full !p-0 !border-0 !text-gray-500 hover:!bg-gray-100 hover:!text-gray-700',
+              open ? '!bg-state-base-hover !text-text-secondary' : '!bg-transparent',
+              '!w-full !border-0 !p-0 !text-text-tertiary hover:!bg-state-base-hover hover:!text-text-secondary',
             )
           }
           popupClassName='!w-full !ring-0'
-          className={'!w-full h-fit !z-20'}
+          className={'!z-20 h-fit !w-full'}
         />
       )}
     </>

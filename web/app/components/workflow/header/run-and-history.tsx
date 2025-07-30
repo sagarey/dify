@@ -1,21 +1,26 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import {
+  RiLoader2Line,
+  RiPlayLargeLine,
+} from '@remixicon/react'
 import { useStore } from '../store'
 import {
   useIsChatMode,
+  useNodesReadOnly,
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
 import ViewHistory from './view-history'
+import Checklist from './checklist'
+import cn from '@/utils/classnames'
 import {
-  Play,
   StopCircle,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
-import { MessagePlay } from '@/app/components/base/icons/src/vender/line/communication'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 
 const RunMode = memo(() => {
   const { t } = useTranslation()
@@ -24,27 +29,39 @@ const RunMode = memo(() => {
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
 
+  const handleStop = () => {
+    handleStopRun(workflowRunningData?.task_id || '')
+  }
+
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === EVENT_WORKFLOW_STOP)
+      handleStop()
+  })
+
   return (
     <>
       <div
         className={cn(
-          'flex items-center px-1.5 h-7 rounded-md text-[13px] font-medium text-primary-600',
-          'hover:bg-primary-50 cursor-pointer',
-          isRunning && 'bg-primary-50 !cursor-not-allowed',
+          'flex h-7 items-center rounded-md px-2.5 text-[13px] font-medium text-components-button-secondary-accent-text',
+          'cursor-pointer hover:bg-state-accent-hover',
+          isRunning && '!cursor-not-allowed bg-state-accent-hover',
         )}
-        onClick={() => handleWorkflowStartRunInWorkflow()}
+        onClick={() => {
+          handleWorkflowStartRunInWorkflow()
+        }}
       >
         {
           isRunning
             ? (
               <>
-                <Loading02 className='mr-1 w-4 h-4 animate-spin' />
+                <RiLoader2Line className='mr-1 h-4 w-4 animate-spin' />
                 {t('workflow.common.running')}
               </>
             )
             : (
               <>
-                <Play className='mr-1 w-4 h-4' />
+                <RiPlayLargeLine className='mr-1 h-4 w-4' />
                 {t('workflow.common.run')}
               </>
             )
@@ -53,10 +70,10 @@ const RunMode = memo(() => {
       {
         isRunning && (
           <div
-            className='flex items-center justify-center ml-0.5 w-7 h-7 cursor-pointer hover:bg-black/5 rounded-md'
-            onClick={() => handleStopRun(workflowRunningData?.task_id || '')}
+            className='ml-0.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-black/5'
+            onClick={handleStop}
           >
-            <StopCircle className='w-4 h-4 text-gray-500' />
+            <StopCircle className='h-4 w-4 text-components-button-ghost-text' />
           </div>
         )
       }
@@ -72,12 +89,12 @@ const PreviewMode = memo(() => {
   return (
     <div
       className={cn(
-        'flex items-center px-1.5 h-7 rounded-md text-[13px] font-medium text-primary-600',
-        'hover:bg-primary-50 cursor-pointer',
+        'flex h-7 items-center rounded-md px-2.5 text-[13px] font-medium text-components-button-secondary-accent-text',
+        'cursor-pointer hover:bg-state-accent-hover',
       )}
       onClick={() => handleWorkflowStartRunInChatflow()}
     >
-      <MessagePlay className='mr-1 w-4 h-4' />
+      <RiPlayLargeLine className='mr-1 h-4 w-4' />
       {t('workflow.common.debugAndPreview')}
     </div>
   )
@@ -86,17 +103,19 @@ PreviewMode.displayName = 'PreviewMode'
 
 const RunAndHistory: FC = () => {
   const isChatMode = useIsChatMode()
+  const { nodesReadOnly } = useNodesReadOnly()
 
   return (
-    <div className='flex items-center px-0.5 h-8 rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xs'>
+    <div className='flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs'>
       {
         !isChatMode && <RunMode />
       }
       {
         isChatMode && <PreviewMode />
       }
-      <div className='mx-0.5 w-[0.5px] h-8 bg-gray-200'></div>
+      <div className='mx-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
       <ViewHistory />
+      <Checklist disabled={nodesReadOnly} />
     </div>
   )
 }

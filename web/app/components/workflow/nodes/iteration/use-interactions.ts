@@ -4,13 +4,18 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import type {
   BlockEnum,
+  ChildNodeTypeCount,
   Node,
 } from '../../types'
-import { generateNewNode } from '../../utils'
+import {
+  generateNewNode,
+  getNodeCustomTypeByNodeDataType,
+} from '../../utils'
 import {
   ITERATION_PADDING,
   NODES_INITIAL_DATA,
 } from '../../constants'
+import { CUSTOM_ITERATION_START_NODE } from '../iteration-start/constants'
 
 export const useNodeIterationInteractions = () => {
   const { t } = useTranslation()
@@ -104,15 +109,24 @@ export const useNodeIterationInteractions = () => {
       handleNodeIterationRerender(parentId)
   }, [store, handleNodeIterationRerender])
 
-  const handleNodeIterationChildrenCopy = useCallback((nodeId: string, newNodeId: string) => {
+  const handleNodeIterationChildrenCopy = useCallback((nodeId: string, newNodeId: string, idMapping: Record<string, string>) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
-    const childrenNodes = nodes.filter(n => n.parentId === nodeId)
+    const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_ITERATION_START_NODE)
+    const newIdMapping = { ...idMapping }
+    const childNodeTypeCount: ChildNodeTypeCount = {}
 
-    return childrenNodes.map((child, index) => {
+    const copyChildren = childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
-      const newNode = generateNewNode({
+
+      if(!childNodeTypeCount[childNodeType])
+        childNodeTypeCount[childNodeType] = nodesWithSameType.length + 1
+      else
+        childNodeTypeCount[childNodeType] = childNodeTypeCount[childNodeType] + 1
+
+      const { newNode } = generateNewNode({
+        type: getNodeCustomTypeByNodeDataType(childNodeType),
         data: {
           ...NODES_INITIAL_DATA[childNodeType],
           ...child.data,
@@ -120,7 +134,8 @@ export const useNodeIterationInteractions = () => {
           _isBundled: false,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${childNodeType}`),
+          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}`)} ${childNodeTypeCount[childNodeType]}` : t(`workflow.blocks.${childNodeType}`),
+          iteration_id: newNodeId,
         },
         position: child.position,
         positionAbsolute: child.positionAbsolute,
@@ -129,8 +144,14 @@ export const useNodeIterationInteractions = () => {
         zIndex: child.zIndex,
       })
       newNode.id = `${newNodeId}${newNode.id + index}`
+      newIdMapping[child.id] = newNode.id
       return newNode
     })
+
+    return {
+      copyChildren,
+      newIdMapping,
+    }
   }, [store, t])
 
   return {
