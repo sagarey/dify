@@ -10,14 +10,10 @@ It focuses on the /completions endpoint and provides optimized support for:
 """
 
 import logging
-from typing import Optional
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
-    ProviderEntity,
-    ProviderCredentialSchema,
-    ModelCredentialSchema,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 

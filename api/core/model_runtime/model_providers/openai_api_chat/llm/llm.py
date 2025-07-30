@@ -26,7 +26,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import ModelType
+# Remove unused ModelType import
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -469,7 +469,7 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
                         delta = choice.get('delta', {})
                         
                         # Handle content delta
-                        if 'content' in delta and delta['content']:
+                        if delta.get('content'):
                             yield LLMResultChunk(
                                 model=chunk_data.get('model', model),
                                 prompt_messages=prompt_messages,
