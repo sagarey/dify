@@ -188,7 +188,7 @@ class OpenAICompatibleProvider:
                 completion_provider.validate_provider_credentials(credentials)
                 
         except Exception as e:
-            logger.error(f"Failed to validate credentials via routed provider: {e}")
+            logger.error("Failed to validate credentials via routed provider: %s", e)
             raise CredentialsValidateFailedError(f"Credential validation failed: {e}")
 
     def validate_model_credentials(self, model: str, credentials: dict) -> None:
@@ -204,8 +204,9 @@ class OpenAICompatibleProvider:
         )
         
         logger.warning(
-            f"DEPRECATED: Validating model '{model}' via deprecated openai_api_compatible provider. "
-            "Please migrate to openai_api_chat or openai_api_completion."
+            "DEPRECATED: Validating model '%s' via deprecated openai_api_compatible provider. "
+            "Please migrate to openai_api_chat or openai_api_completion.",
+            model
         )
 
         # Route validation to appropriate provider
@@ -222,7 +223,7 @@ class OpenAICompatibleProvider:
                 completion_provider.validate_model_credentials(model, credentials)
                 
         except Exception as e:
-            logger.error(f"Failed to validate model credentials via routed provider: {e}")
+            logger.error("Failed to validate model credentials via routed provider: %s", e)
             raise CredentialsValidateFailedError(f"Model credential validation failed: {e}")
 
     def get_model_list(self, credentials: dict) -> list:

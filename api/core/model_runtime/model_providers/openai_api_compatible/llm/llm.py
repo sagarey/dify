@@ -53,8 +53,9 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
         )
         
         logger.warning(
-            f"DEPRECATED: Invoking model '{model}' via deprecated openai_api_compatible LLM. "
-            "Please migrate to openai_api_chat or openai_api_completion."
+            "DEPRECATED: Invoking model '%s' via deprecated openai_api_compatible LLM. "
+            "Please migrate to openai_api_chat or openai_api_completion.",
+            model
         )
 
         # Route to appropriate provider based on mode
@@ -90,7 +91,7 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
                     user=user
                 )
         except Exception as e:
-            logger.error(f"Failed to route request to appropriate provider: {e}")
+            logger.error("Failed to route request to appropriate provider: %s", e)
             raise InvokeError(f"Request routing failed: {e}")
 
     def get_num_tokens(
@@ -123,7 +124,7 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
                 completion_llm = OpenAICompletionLargeLanguageModel()
                 return completion_llm.get_num_tokens(model, credentials, prompt_messages, tools)
         except Exception as e:
-            logger.error(f"Failed to get token count via routed provider: {e}")
+            logger.error("Failed to get token count via routed provider: %s", e)
             # Return a reasonable default if routing fails
             return sum(len(message.content) // 4 for message in prompt_messages if hasattr(message, 'content'))
 
@@ -140,8 +141,9 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
         )
         
         logger.warning(
-            f"DEPRECATED: Validating credentials for model '{model}' via deprecated openai_api_compatible LLM. "
-            "Please migrate to openai_api_chat or openai_api_completion."
+            "DEPRECATED: Validating credentials for model '%s' via deprecated openai_api_compatible LLM. "
+            "Please migrate to openai_api_chat or openai_api_completion.",
+            model
         )
 
         mode = credentials.get('mode', 'chat')
@@ -156,5 +158,5 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
                 completion_llm = OpenAICompletionLargeLanguageModel()
                 completion_llm.validate_credentials(model, credentials)
         except Exception as e:
-            logger.error(f"Failed to validate credentials via routed provider: {e}")
+            logger.error("Failed to validate credentials via routed provider: %s", e)
             raise
