@@ -102,7 +102,7 @@ class TestOpenAICompatibleLargeLanguageModel:
 
         # Call the method
         result = self.llm._invoke("gpt-3.5-turbo", credentials, messages)
-        
+
         # Verify the result
         assert result is mock_result
 
@@ -121,7 +121,7 @@ class TestOpenAICompatibleLargeLanguageModel:
 
         # Call the method
         result = self.llm._invoke("text-davinci-003", credentials, messages)
-        
+
         # Verify the result
         assert result is mock_result
 
@@ -154,7 +154,7 @@ class TestOpenAICompatibleLargeLanguageModel:
 
         # Call the method
         result = self.llm.get_num_tokens("gpt-3.5-turbo", credentials, messages)
-        
+
         # Verify the result
         assert result == 10
 
@@ -168,7 +168,7 @@ class TestOpenAICompatibleLargeLanguageModel:
 
         # Call the method
         self.llm.validate_credentials("gpt-3.5-turbo", credentials)
-        
+
         # Verify the method was called
         self.llm.validate_credentials.assert_called_once_with("gpt-3.5-turbo", credentials)
 

@@ -136,7 +136,7 @@ class TestOpenAICompletionLargeLanguageModel:
 
         # Call the method
         result = self.llm._invoke("text-davinci-003", credentials, messages, tools=tools)
-        
+
         # Verify the result
         assert result is mock_result
 

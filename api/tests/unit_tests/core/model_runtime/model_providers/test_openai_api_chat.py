@@ -173,7 +173,7 @@ class TestOpenAIChatLargeLanguageModel:
         # Configure the mock to return a list of 2 messages
         mock_result = [
             {"role": "system", "content": "You are a helpful assistant"},
-            {"role": "user", "content": "Hello"}
+            {"role": "user", "content": "Hello"},
         ]
         self.llm._convert_messages_to_openai_format.return_value = mock_result
 
