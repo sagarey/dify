@@ -32,6 +32,7 @@
 - openllm
 - localai
 - volcengine_maas
+- openai_api_compatible
 - openai_api_chat
 - openai_api_completion
 - hunyuan
