@@ -30,6 +30,28 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
     Routes requests to the appropriate specialized provider based on mode configuration.
     """
 
+    def _get_chat_llm(self):
+        """Get chat LLM instance with lazy loading to avoid circular imports"""
+        try:
+            from core.model_runtime.model_providers.openai_api_chat.llm.llm import (
+                OpenAIChatLargeLanguageModel,
+            )
+            return OpenAIChatLargeLanguageModel()
+        except ImportError as e:
+            logger.error("Failed to import OpenAIChatLargeLanguageModel: %s", e)
+            raise InvokeError("Chat provider not available") from e
+
+    def _get_completion_llm(self):
+        """Get completion LLM instance with lazy loading to avoid circular imports"""
+        try:
+            from core.model_runtime.model_providers.openai_api_completion.llm.llm import (
+                OpenAICompletionLargeLanguageModel,
+            )
+            return OpenAICompletionLargeLanguageModel()
+        except ImportError as e:
+            logger.error("Failed to import OpenAICompletionLargeLanguageModel: %s", e)
+            raise InvokeError("Completion provider not available") from e
+
     def _invoke(
         self,
         model: str,
@@ -64,11 +86,7 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
         try:
             if mode == "chat":
                 # Route to chat provider
-                from core.model_runtime.model_providers.openai_api_chat.llm.llm import (
-                    OpenAIChatLargeLanguageModel,
-                )
-
-                chat_llm = OpenAIChatLargeLanguageModel()
+                chat_llm = self._get_chat_llm()
                 return chat_llm._invoke(
                     model=model,
                     credentials=credentials,
@@ -81,11 +99,7 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
                 )
             else:
                 # Route to completion provider
-                from core.model_runtime.model_providers.openai_api_completion.llm.llm import (
-                    OpenAICompletionLargeLanguageModel,
-                )
-
-                completion_llm = OpenAICompletionLargeLanguageModel()
+                completion_llm = self._get_completion_llm()
                 return completion_llm._invoke(
                     model=model,
                     credentials=credentials,
@@ -98,7 +112,7 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
                 )
         except Exception as e:
             logger.exception("Failed to route request to appropriate provider")
-            raise InvokeError(f"Request routing failed: {e}")
+            raise InvokeError(f"Request routing failed: {e}") from e
 
     def get_num_tokens(
         self,
@@ -108,9 +122,8 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> int:
         """
-        Get number of tokens with routing to appropriate provider
+        Get number of tokens with automatic routing
         """
-        # Issue deprecation warning
         warnings.warn(
             "The 'openai_api_compatible' LLM is deprecated. "
             "Please migrate to 'openai_api_chat' or 'openai_api_completion'.",
@@ -122,33 +135,29 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
 
         try:
             if mode == "chat":
-                from core.model_runtime.model_providers.openai_api_chat.llm.llm import (
-                    OpenAIChatLargeLanguageModel,
+                chat_llm = self._get_chat_llm()
+                return chat_llm.get_num_tokens(
+                    model=model,
+                    credentials=credentials,
+                    prompt_messages=prompt_messages,
+                    tools=tools,
                 )
-
-                chat_llm = OpenAIChatLargeLanguageModel()
-                return chat_llm.get_num_tokens(model, credentials, prompt_messages, tools)
             else:
-                from core.model_runtime.model_providers.openai_api_completion.llm.llm import (
-                    OpenAICompletionLargeLanguageModel,
+                completion_llm = self._get_completion_llm()
+                return completion_llm.get_num_tokens(
+                    model=model,
+                    credentials=credentials,
+                    prompt_messages=prompt_messages,
+                    tools=tools,
                 )
-
-                completion_llm = OpenAICompletionLargeLanguageModel()
-                return completion_llm.get_num_tokens(model, credentials, prompt_messages, tools)
         except Exception as e:
             logger.exception("Failed to get token count via routed provider")
-            # Return a reasonable default if routing fails
-            total_tokens = 0
-            for message in prompt_messages:
-                if hasattr(message, "content") and message.content:
-                    total_tokens += len(str(message.content)) // 4
-            return total_tokens
+            raise InvokeError(f"Token counting failed: {e}") from e
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
-        Validate credentials with routing to appropriate provider
+        Validate credentials with automatic routing
         """
-        # Issue deprecation warning
         warnings.warn(
             "The 'openai_api_compatible' LLM is deprecated. "
             "Please migrate to 'openai_api_chat' or 'openai_api_completion'.",
@@ -156,29 +165,15 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
             stacklevel=2,
         )
 
-        logger.warning(
-            "DEPRECATED: Validating credentials for model '%s' via deprecated openai_api_compatible LLM. "
-            "Please migrate to openai_api_chat or openai_api_completion.",
-            model,
-        )
-
         mode = credentials.get("mode", "chat")
 
         try:
             if mode == "chat":
-                from core.model_runtime.model_providers.openai_api_chat.llm.llm import (
-                    OpenAIChatLargeLanguageModel,
-                )
-
-                chat_llm = OpenAIChatLargeLanguageModel()
+                chat_llm = self._get_chat_llm()
                 chat_llm.validate_credentials(model, credentials)
             else:
-                from core.model_runtime.model_providers.openai_api_completion.llm.llm import (
-                    OpenAICompletionLargeLanguageModel,
-                )
-
-                completion_llm = OpenAICompletionLargeLanguageModel()
+                completion_llm = self._get_completion_llm()
                 completion_llm.validate_credentials(model, credentials)
         except Exception as e:
             logger.exception("Failed to validate credentials via routed provider")
-            raise
+            raise InvokeError(f"Credential validation failed: {e}") from e
