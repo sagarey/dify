@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 class OpenAIChatLargeLanguageModel(LargeLanguageModel):
     """
     OpenAI API Chat Large Language Model - specifically for /chat/completions endpoint
-    
+
     This implementation focuses exclusively on chat-based completions,
     providing optimized support for conversation-style interactions.
     """
@@ -76,10 +76,8 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
             LLMResult for non-streaming, Generator for streaming
         """
         # Validate that we're using chat mode
-        if credentials.get('mode', 'chat') != 'chat':
-            raise CredentialsValidateFailedError(
-                'This provider only supports chat mode'
-            )
+        if credentials.get("mode", "chat") != "chat":
+            raise CredentialsValidateFailedError("This provider only supports chat mode")
 
         return self._chat_completion_request(
             model=model,
@@ -113,22 +111,22 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
         """
         # Simple token estimation - in production, use proper tokenizer
         total_content = ""
-        
+
         for message in prompt_messages:
             if isinstance(message, (SystemPromptMessage, UserPromptMessage, AssistantPromptMessage)):
                 if isinstance(message.content, str):
                     total_content += message.content
                 elif isinstance(message.content, list):
                     for content_part in message.content:
-                        if hasattr(content_part, 'data') and isinstance(content_part.data, str):
+                        if hasattr(content_part, "data") and isinstance(content_part.data, str):
                             total_content += content_part.data
             elif isinstance(message, ToolPromptMessage):
                 total_content += str(message.content)
-        
+
         if tools:
             for tool in tools:
                 total_content += tool.name + str(tool.description) + str(tool.parameters)
-        
+
         # Rough estimation: 1 token ≈ 4 characters
         return max(len(total_content) // 4, 1)
 
@@ -150,7 +148,7 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
                 credentials=credentials,
                 prompt_messages=[
                     SystemPromptMessage(content="You are a helpful assistant."),
-                    UserPromptMessage(content="Hello")
+                    UserPromptMessage(content="Hello"),
                 ],
                 model_parameters={"max_tokens": 5},
                 stream=False,
@@ -185,15 +183,15 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
         Returns:
             LLMResult or streaming generator
         """
-        api_key = credentials.get('api_key')
-        endpoint_url = credentials.get('endpoint_url', 'https://api.openai.com/v1')
-        
+        api_key = credentials.get("api_key")
+        endpoint_url = credentials.get("endpoint_url", "https://api.openai.com/v1")
+
         if not api_key:
-            raise CredentialsValidateFailedError('API Key is required')
+            raise CredentialsValidateFailedError("API Key is required")
 
         headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
         }
 
         # Convert Dify messages to OpenAI format
@@ -201,9 +199,9 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
 
         # Prepare request payload
         payload = {
-            'model': model,
-            'messages': messages,
-            'stream': stream,
+            "model": model,
+            "messages": messages,
+            "stream": stream,
         }
 
         # Add model parameters
@@ -211,36 +209,35 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
 
         # Add function calling tools if provided
         if tools:
-            payload['tools'] = self._convert_tools_to_openai_format(tools)
+            payload["tools"] = self._convert_tools_to_openai_format(tools)
 
         # Add stop sequences
         if stop:
-            payload['stop'] = stop
+            payload["stop"] = stop
 
         # Add user identifier
         if user:
-            payload['user'] = user
+            payload["user"] = user
 
         # Ensure we don't exceed context limits
-        context_size = int(credentials.get('context_size', 4096))
-        if 'max_tokens' not in payload:
+        context_size = int(credentials.get("context_size", 4096))
+        if "max_tokens" not in payload:
             # Reserve some tokens for the response
             estimated_prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages, tools)
             max_response_tokens = min(
-                int(credentials.get('max_tokens', 2048)),
-                max(context_size - estimated_prompt_tokens - 100, 100)
+                int(credentials.get("max_tokens", 2048)), max(context_size - estimated_prompt_tokens - 100, 100)
             )
-            payload['max_tokens'] = max_response_tokens
+            payload["max_tokens"] = max_response_tokens
 
         # Make API request
         api_url = self._get_chat_completions_url(endpoint_url)
-        
+
         try:
             if stream:
                 return self._handle_streaming_response(api_url, headers, payload, model, prompt_messages)
             else:
                 return self._handle_non_streaming_response(api_url, headers, payload, model, prompt_messages)
-                
+
         except httpx.ConnectError as ex:
             raise InvokeConnectionError(f"Connection failed: {str(ex)}")
         except httpx.TimeoutException as ex:
@@ -259,68 +256,51 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
             List of OpenAI-formatted messages
         """
         openai_messages = []
-        
+
         for message in messages:
             if isinstance(message, SystemPromptMessage):
-                openai_messages.append({
-                    'role': 'system',
-                    'content': message.content
-                })
+                openai_messages.append({"role": "system", "content": message.content})
             elif isinstance(message, UserPromptMessage):
                 if isinstance(message.content, str):
-                    openai_messages.append({
-                        'role': 'user',
-                        'content': message.content
-                    })
+                    openai_messages.append({"role": "user", "content": message.content})
                 else:
                     # Handle multimodal content
                     content_parts = []
                     for content_part in message.content:
                         if content_part.type == PromptMessageContentUnionTypes.TEXT:
-                            content_parts.append({
-                                'type': 'text',
-                                'text': content_part.data
-                            })
+                            content_parts.append({"type": "text", "text": content_part.data})
                         elif content_part.type == PromptMessageContentUnionTypes.IMAGE:
-                            content_parts.append({
-                                'type': 'image_url',
-                                'image_url': {
-                                    'url': content_part.data if isinstance(content_part.data, str) 
-                                           else content_part.data.get('url', '')
+                            content_parts.append(
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": content_part.data
+                                        if isinstance(content_part.data, str)
+                                        else content_part.data.get("url", "")
+                                    },
                                 }
-                            })
-                    openai_messages.append({
-                        'role': 'user', 
-                        'content': content_parts
-                    })
+                            )
+                    openai_messages.append({"role": "user", "content": content_parts})
             elif isinstance(message, AssistantPromptMessage):
-                openai_message = {
-                    'role': 'assistant',
-                    'content': message.content or ''
-                }
-                
+                openai_message = {"role": "assistant", "content": message.content or ""}
+
                 # Add tool calls if present
                 if message.tool_calls:
-                    openai_message['tool_calls'] = [
+                    openai_message["tool_calls"] = [
                         {
-                            'id': tool_call.id,
-                            'type': 'function',
-                            'function': {
-                                'name': tool_call.function.name,
-                                'arguments': tool_call.function.arguments
-                            }
+                            "id": tool_call.id,
+                            "type": "function",
+                            "function": {"name": tool_call.function.name, "arguments": tool_call.function.arguments},
                         }
                         for tool_call in message.tool_calls
                     ]
-                
+
                 openai_messages.append(openai_message)
             elif isinstance(message, ToolPromptMessage):
-                openai_messages.append({
-                    'role': 'tool',
-                    'tool_call_id': message.tool_call_id,
-                    'content': str(message.content)
-                })
-        
+                openai_messages.append(
+                    {"role": "tool", "tool_call_id": message.tool_call_id, "content": str(message.content)}
+                )
+
         return openai_messages
 
     def _convert_tools_to_openai_format(self, tools: list[PromptMessageTool]) -> list[dict]:
@@ -335,12 +315,8 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
         """
         return [
             {
-                'type': 'function',
-                'function': {
-                    'name': tool.name,
-                    'description': tool.description,
-                    'parameters': tool.parameters
-                }
+                "type": "function",
+                "function": {"name": tool.name, "description": tool.description, "parameters": tool.parameters},
             }
             for tool in tools
         ]
@@ -358,12 +334,7 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
         return f"{base_url.rstrip('/')}/chat/completions"
 
     def _handle_non_streaming_response(
-        self, 
-        url: str, 
-        headers: dict, 
-        payload: dict, 
-        model: str, 
-        prompt_messages: list[PromptMessage]
+        self, url: str, headers: dict, payload: dict, model: str, prompt_messages: list[PromptMessage]
     ) -> LLMResult:
         """
         Handle non-streaming API response
@@ -380,56 +351,50 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
         """
         with httpx.Client(timeout=60.0) as client:
             response = client.post(url, headers=headers, json=payload)
-            
+
             if response.status_code != 200:
                 self._handle_error_response(response)
-            
+
             response_data = response.json()
-            choice = response_data['choices'][0]
-            message_data = choice['message']
-            
+            choice = response_data["choices"][0]
+            message_data = choice["message"]
+
             # Parse assistant message
-            assistant_message = AssistantPromptMessage(
-                content=message_data.get('content', '') or ''
-            )
-            
+            assistant_message = AssistantPromptMessage(content=message_data.get("content", "") or "")
+
             # Handle tool calls if present
-            if message_data.get('tool_calls'):
+            if message_data.get("tool_calls"):
                 tool_calls = []
-                for tool_call in message_data['tool_calls']:
-                    tool_calls.append(AssistantPromptMessage.ToolCall(
-                        id=tool_call['id'],
-                        type=tool_call['type'],
-                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                            name=tool_call['function']['name'],
-                            arguments=tool_call['function']['arguments']
+                for tool_call in message_data["tool_calls"]:
+                    tool_calls.append(
+                        AssistantPromptMessage.ToolCall(
+                            id=tool_call["id"],
+                            type=tool_call["type"],
+                            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                name=tool_call["function"]["name"], arguments=tool_call["function"]["arguments"]
+                            ),
                         )
-                    ))
+                    )
                 assistant_message.tool_calls = tool_calls
-            
+
             # Parse usage information
-            usage_data = response_data.get('usage', {})
+            usage_data = response_data.get("usage", {})
             usage = LLMUsage(
-                prompt_tokens=usage_data.get('prompt_tokens', 0),
-                completion_tokens=usage_data.get('completion_tokens', 0),
-                total_tokens=usage_data.get('total_tokens', 0)
+                prompt_tokens=usage_data.get("prompt_tokens", 0),
+                completion_tokens=usage_data.get("completion_tokens", 0),
+                total_tokens=usage_data.get("total_tokens", 0),
             )
-            
+
             return LLMResult(
                 model=model,
                 prompt_messages=prompt_messages,
                 message=assistant_message,
                 usage=usage,
-                system_fingerprint=response_data.get('system_fingerprint', '')
+                system_fingerprint=response_data.get("system_fingerprint", ""),
             )
 
     def _handle_streaming_response(
-        self, 
-        url: str, 
-        headers: dict, 
-        payload: dict, 
-        model: str, 
-        prompt_messages: list[PromptMessage]
+        self, url: str, headers: dict, payload: dict, model: str, prompt_messages: list[PromptMessage]
     ) -> Generator:
         """
         Handle streaming API response
@@ -444,91 +409,98 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
         Returns:
             Generator yielding LLMResultChunk objects
         """
+
         def create_stream():
-            with httpx.stream('POST', url, headers=headers, json=payload, timeout=60.0) as response:
+            with httpx.stream("POST", url, headers=headers, json=payload, timeout=60.0) as response:
                 if response.status_code != 200:
                     self._handle_error_response(response)
-                
+
                 for line in response.iter_lines():
-                    if not line or not line.startswith('data: '):
+                    if not line or not line.startswith("data: "):
                         continue
-                    
+
                     data = line[6:]  # Remove 'data: ' prefix
-                    
-                    if data.strip() == '[DONE]':
+
+                    if data.strip() == "[DONE]":
                         break
-                    
+
                     try:
                         chunk_data = json.loads(data)
-                        
-                        if 'choices' not in chunk_data or not chunk_data['choices']:
+
+                        if "choices" not in chunk_data or not chunk_data["choices"]:
                             continue
-                        
-                        choice = chunk_data['choices'][0]
-                        delta = choice.get('delta', {})
-                        
+
+                        choice = chunk_data["choices"][0]
+                        delta = choice.get("delta", {})
+
                         # Handle content delta
-                        if delta.get('content'):
+                        if delta.get("content"):
                             yield LLMResultChunk(
-                                model=chunk_data.get('model', model),
+                                model=chunk_data.get("model", model),
                                 prompt_messages=prompt_messages,
-                                system_fingerprint=chunk_data.get('system_fingerprint', ''),
+                                system_fingerprint=chunk_data.get("system_fingerprint", ""),
                                 delta=LLMResultChunkDelta(
-                                    index=choice.get('index', 0),
-                                    message=AssistantPromptMessage(content=delta['content']),
-                                    finish_reason=choice.get('finish_reason')
-                                )
+                                    index=choice.get("index", 0),
+                                    message=AssistantPromptMessage(content=delta["content"]),
+                                    finish_reason=choice.get("finish_reason"),
+                                ),
                             )
-                        
+
                         # Handle tool call deltas
-                        elif 'tool_calls' in delta:
+                        elif "tool_calls" in delta:
                             tool_calls = []
-                            for tool_call_delta in delta['tool_calls']:
-                                tool_calls.append(AssistantPromptMessage.ToolCall(
-                                    id=tool_call_delta.get('id', ''),
-                                    type=tool_call_delta.get('type', 'function'),
-                                    function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                        name=tool_call_delta.get('function', {}).get('name', ''),
-                                        arguments=tool_call_delta.get('function', {}).get('arguments', '')
+                            for tool_call_delta in delta["tool_calls"]:
+                                tool_calls.append(
+                                    AssistantPromptMessage.ToolCall(
+                                        id=tool_call_delta.get("id", ""),
+                                        type=tool_call_delta.get("type", "function"),
+                                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                            name=tool_call_delta.get("function", {}).get("name", ""),
+                                            arguments=tool_call_delta.get("function", {}).get("arguments", ""),
+                                        ),
                                     )
-                                ))
-                            
-                            yield LLMResultChunk(
-                                model=chunk_data.get('model', model),
-                                prompt_messages=prompt_messages,
-                                system_fingerprint=chunk_data.get('system_fingerprint', ''),
-                                delta=LLMResultChunkDelta(
-                                    index=choice.get('index', 0),
-                                    message=AssistantPromptMessage(content='', tool_calls=tool_calls),
-                                    finish_reason=choice.get('finish_reason')
                                 )
+
+                            yield LLMResultChunk(
+                                model=chunk_data.get("model", model),
+                                prompt_messages=prompt_messages,
+                                system_fingerprint=chunk_data.get("system_fingerprint", ""),
+                                delta=LLMResultChunkDelta(
+                                    index=choice.get("index", 0),
+                                    message=AssistantPromptMessage(content="", tool_calls=tool_calls),
+                                    finish_reason=choice.get("finish_reason"),
+                                ),
                             )
-                        
+
                         # Handle final chunk with usage
-                        elif choice.get('finish_reason'):
-                            usage_data = chunk_data.get('usage', {})
-                            usage = LLMUsage(
-                                prompt_tokens=usage_data.get('prompt_tokens', 0),
-                                completion_tokens=usage_data.get('completion_tokens', 0),
-                                total_tokens=usage_data.get('total_tokens', 0)
-                            ) if usage_data else None
-                            
-                            yield LLMResultChunk(
-                                model=chunk_data.get('model', model),
-                                prompt_messages=prompt_messages,
-                                system_fingerprint=chunk_data.get('system_fingerprint', ''),
-                                delta=LLMResultChunkDelta(
-                                    index=choice.get('index', 0),
-                                    message=AssistantPromptMessage(content=''),
-                                    usage=usage,
-                                    finish_reason=choice.get('finish_reason')
+                        elif choice.get("finish_reason"):
+                            usage_data = chunk_data.get("usage", {})
+                            usage = (
+                                LLMUsage(
+                                    prompt_tokens=usage_data.get("prompt_tokens", 0),
+                                    completion_tokens=usage_data.get("completion_tokens", 0),
+                                    total_tokens=usage_data.get("total_tokens", 0),
                                 )
+                                if usage_data
+                                else None
                             )
-                    
+
+                            yield LLMResultChunk(
+                                model=chunk_data.get("model", model),
+                                prompt_messages=prompt_messages,
+                                system_fingerprint=chunk_data.get("system_fingerprint", ""),
+                                delta=LLMResultChunkDelta(
+                                    index=choice.get("index", 0),
+                                    message=AssistantPromptMessage(content=""),
+                                    usage=usage,
+                                    finish_reason=choice.get("finish_reason"),
+                                ),
+                            )
+
                     except json.JSONDecodeError:
                         # Skip invalid JSON chunks
                         continue
-        
+
         return create_stream()
 
     def _handle_error_response(self, response: httpx.Response) -> None:
@@ -543,9 +515,9 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
         """
         try:
             error_data = response.json()
-            error_message = error_data.get('error', {}).get('message', f'HTTP {response.status_code}')
+            error_message = error_data.get("error", {}).get("message", f"HTTP {response.status_code}")
         except:
-            error_message = f'HTTP {response.status_code}'
+            error_message = f"HTTP {response.status_code}"
 
         if response.status_code == 401:
             raise InvokeAuthorizationError(error_message)

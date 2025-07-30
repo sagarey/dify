@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
     """
     OpenAI API Completion Large Language Model - specifically for /completions endpoint
-    
+
     This implementation focuses exclusively on text completions,
     providing optimized support for prompt-completion style interactions.
     """
@@ -73,10 +73,8 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
             LLMResult for non-streaming, Generator for streaming
         """
         # Validate that we're using completion mode
-        if credentials.get('mode', 'completion') != 'completion':
-            raise CredentialsValidateFailedError(
-                'This provider only supports completion mode'
-            )
+        if credentials.get("mode", "completion") != "completion":
+            raise CredentialsValidateFailedError("This provider only supports completion mode")
 
         # Note: tools are not supported in completion mode
         if tools:
@@ -112,7 +110,7 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
             Estimated number of tokens
         """
         prompt_text = self._convert_messages_to_prompt(prompt_messages)
-        
+
         # Simple token estimation - in production, use proper tokenizer
         # Rough estimation: 1 token ≈ 4 characters
         return max(len(prompt_text) // 4, 1)
@@ -165,15 +163,15 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
         Returns:
             LLMResult or streaming generator
         """
-        api_key = credentials.get('api_key')
-        endpoint_url = credentials.get('endpoint_url', 'https://api.openai.com/v1')
-        
+        api_key = credentials.get("api_key")
+        endpoint_url = credentials.get("endpoint_url", "https://api.openai.com/v1")
+
         if not api_key:
-            raise CredentialsValidateFailedError('API Key is required')
+            raise CredentialsValidateFailedError("API Key is required")
 
         headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
         }
 
         # Convert Dify messages to single prompt text
@@ -181,9 +179,9 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
 
         # Prepare request payload
         payload = {
-            'model': model,
-            'prompt': prompt,
-            'stream': stream,
+            "model": model,
+            "prompt": prompt,
+            "stream": stream,
         }
 
         # Add model parameters
@@ -191,32 +189,31 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
 
         # Add stop sequences
         if stop:
-            payload['stop'] = stop
+            payload["stop"] = stop
 
         # Add user identifier
         if user:
-            payload['user'] = user
+            payload["user"] = user
 
         # Ensure we don't exceed context limits
-        context_size = int(credentials.get('context_size', 4096))
-        if 'max_tokens' not in payload:
+        context_size = int(credentials.get("context_size", 4096))
+        if "max_tokens" not in payload:
             # Reserve some tokens for the response
             estimated_prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
             max_response_tokens = min(
-                int(credentials.get('max_tokens', 2048)),
-                max(context_size - estimated_prompt_tokens - 100, 100)
+                int(credentials.get("max_tokens", 2048)), max(context_size - estimated_prompt_tokens - 100, 100)
             )
-            payload['max_tokens'] = max_response_tokens
+            payload["max_tokens"] = max_response_tokens
 
         # Make API request
         api_url = self._get_completions_url(endpoint_url)
-        
+
         try:
             if stream:
                 return self._handle_streaming_response(api_url, headers, payload, model, prompt_messages)
             else:
                 return self._handle_non_streaming_response(api_url, headers, payload, model, prompt_messages)
-                
+
         except httpx.ConnectError as ex:
             raise InvokeConnectionError(f"Connection failed: {str(ex)}")
         except httpx.TimeoutException as ex:
@@ -235,7 +232,7 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
             Single prompt text
         """
         prompt_parts = []
-        
+
         for message in messages:
             if isinstance(message, SystemPromptMessage):
                 # Add system message as prefix
@@ -247,15 +244,15 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
                     # Extract text from multimodal content
                     text_parts = []
                     for content_part in message.content:
-                        if hasattr(content_part, 'data') and isinstance(content_part.data, str):
+                        if hasattr(content_part, "data") and isinstance(content_part.data, str):
                             text_parts.append(content_part.data)
-                    prompt_parts.append(' '.join(text_parts))
+                    prompt_parts.append(" ".join(text_parts))
             elif isinstance(message, AssistantPromptMessage):
                 # Add assistant message as context
                 if message.content:
                     prompt_parts.append(message.content)
-        
-        return '\n'.join(prompt_parts)
+
+        return "\n".join(prompt_parts)
 
     def _get_completions_url(self, base_url: str) -> str:
         """
@@ -270,12 +267,7 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
         return f"{base_url.rstrip('/')}/completions"
 
     def _handle_non_streaming_response(
-        self, 
-        url: str, 
-        headers: dict, 
-        payload: dict, 
-        model: str, 
-        prompt_messages: list[PromptMessage]
+        self, url: str, headers: dict, payload: dict, model: str, prompt_messages: list[PromptMessage]
     ) -> LLMResult:
         """
         Handle non-streaming API response
@@ -292,41 +284,36 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
         """
         with httpx.Client(timeout=60.0) as client:
             response = client.post(url, headers=headers, json=payload)
-            
+
             if response.status_code != 200:
                 self._handle_error_response(response)
-            
+
             response_data = response.json()
-            choice = response_data['choices'][0]
-            
+            choice = response_data["choices"][0]
+
             # Parse completion text
-            completion_text = choice.get('text', '')
-            
+            completion_text = choice.get("text", "")
+
             assistant_message = AssistantPromptMessage(content=completion_text)
-            
+
             # Parse usage information
-            usage_data = response_data.get('usage', {})
+            usage_data = response_data.get("usage", {})
             usage = LLMUsage(
-                prompt_tokens=usage_data.get('prompt_tokens', 0),
-                completion_tokens=usage_data.get('completion_tokens', 0),
-                total_tokens=usage_data.get('total_tokens', 0)
+                prompt_tokens=usage_data.get("prompt_tokens", 0),
+                completion_tokens=usage_data.get("completion_tokens", 0),
+                total_tokens=usage_data.get("total_tokens", 0),
             )
-            
+
             return LLMResult(
                 model=model,
                 prompt_messages=prompt_messages,
                 message=assistant_message,
                 usage=usage,
-                system_fingerprint=response_data.get('system_fingerprint', '')
+                system_fingerprint=response_data.get("system_fingerprint", ""),
             )
 
     def _handle_streaming_response(
-        self, 
-        url: str, 
-        headers: dict, 
-        payload: dict, 
-        model: str, 
-        prompt_messages: list[PromptMessage]
+        self, url: str, headers: dict, payload: dict, model: str, prompt_messages: list[PromptMessage]
     ) -> Generator:
         """
         Handle streaming API response
@@ -341,69 +328,74 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
         Returns:
             Generator yielding LLMResultChunk objects
         """
+
         def create_stream():
-            with httpx.stream('POST', url, headers=headers, json=payload, timeout=60.0) as response:
+            with httpx.stream("POST", url, headers=headers, json=payload, timeout=60.0) as response:
                 if response.status_code != 200:
                     self._handle_error_response(response)
-                
+
                 for line in response.iter_lines():
-                    if not line or not line.startswith('data: '):
+                    if not line or not line.startswith("data: "):
                         continue
-                    
+
                     data = line[6:]  # Remove 'data: ' prefix
-                    
-                    if data.strip() == '[DONE]':
+
+                    if data.strip() == "[DONE]":
                         break
-                    
+
                     try:
                         chunk_data = json.loads(data)
-                        
-                        if 'choices' not in chunk_data or not chunk_data['choices']:
+
+                        if "choices" not in chunk_data or not chunk_data["choices"]:
                             continue
-                        
-                        choice = chunk_data['choices'][0]
-                        
+
+                        choice = chunk_data["choices"][0]
+
                         # Handle text delta
-                        if 'text' in choice:
-                            text_delta = choice['text']
-                            
+                        if "text" in choice:
+                            text_delta = choice["text"]
+
                             if text_delta:  # Only yield if there's actual content
                                 yield LLMResultChunk(
-                                    model=chunk_data.get('model', model),
+                                    model=chunk_data.get("model", model),
                                     prompt_messages=prompt_messages,
-                                    system_fingerprint=chunk_data.get('system_fingerprint', ''),
+                                    system_fingerprint=chunk_data.get("system_fingerprint", ""),
                                     delta=LLMResultChunkDelta(
-                                        index=choice.get('index', 0),
+                                        index=choice.get("index", 0),
                                         message=AssistantPromptMessage(content=text_delta),
-                                        finish_reason=choice.get('finish_reason')
-                                    )
+                                        finish_reason=choice.get("finish_reason"),
+                                    ),
                                 )
-                        
+
                         # Handle final chunk with usage
-                        elif choice.get('finish_reason'):
-                            usage_data = chunk_data.get('usage', {})
-                            usage = LLMUsage(
-                                prompt_tokens=usage_data.get('prompt_tokens', 0),
-                                completion_tokens=usage_data.get('completion_tokens', 0),
-                                total_tokens=usage_data.get('total_tokens', 0)
-                            ) if usage_data else None
-                            
-                            yield LLMResultChunk(
-                                model=chunk_data.get('model', model),
-                                prompt_messages=prompt_messages,
-                                system_fingerprint=chunk_data.get('system_fingerprint', ''),
-                                delta=LLMResultChunkDelta(
-                                    index=choice.get('index', 0),
-                                    message=AssistantPromptMessage(content=''),
-                                    usage=usage,
-                                    finish_reason=choice.get('finish_reason')
+                        elif choice.get("finish_reason"):
+                            usage_data = chunk_data.get("usage", {})
+                            usage = (
+                                LLMUsage(
+                                    prompt_tokens=usage_data.get("prompt_tokens", 0),
+                                    completion_tokens=usage_data.get("completion_tokens", 0),
+                                    total_tokens=usage_data.get("total_tokens", 0),
                                 )
+                                if usage_data
+                                else None
                             )
-                    
+
+                            yield LLMResultChunk(
+                                model=chunk_data.get("model", model),
+                                prompt_messages=prompt_messages,
+                                system_fingerprint=chunk_data.get("system_fingerprint", ""),
+                                delta=LLMResultChunkDelta(
+                                    index=choice.get("index", 0),
+                                    message=AssistantPromptMessage(content=""),
+                                    usage=usage,
+                                    finish_reason=choice.get("finish_reason"),
+                                ),
+                            )
+
                     except json.JSONDecodeError:
                         # Skip invalid JSON chunks
                         continue
-        
+
         return create_stream()
 
     def _handle_error_response(self, response: httpx.Response) -> None:
@@ -418,9 +410,9 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
         """
         try:
             error_data = response.json()
-            error_message = error_data.get('error', {}).get('message', f'HTTP {response.status_code}')
+            error_message = error_data.get("error", {}).get("message", f"HTTP {response.status_code}")
         except:
-            error_message = f'HTTP {response.status_code}'
+            error_message = f"HTTP {response.status_code}"
 
         if response.status_code == 401:
             raise InvokeAuthorizationError(error_message)

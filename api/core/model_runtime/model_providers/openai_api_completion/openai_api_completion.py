@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class OpenAICompletionProvider:
     """
     OpenAI API Completion Provider - specifically for /completions endpoint
-    
+
     This provider handles text completions using the OpenAI-compatible
     /completions API endpoint.
     """
@@ -36,63 +36,41 @@ class OpenAICompletionProvider:
     def get_provider_schema(self) -> dict:
         """
         Returns the provider schema configuration
-        
+
         This defines the provider's metadata, supported features,
         and credential requirements.
         """
         return {
             "provider": "openai_api_completion",
-            "label": {
-                "en_US": "OpenAI API Completion",
-                "zh_Hans": "OpenAI API 补全"
-            },
+            "label": {"en_US": "OpenAI API Completion", "zh_Hans": "OpenAI API 补全"},
             "description": {
                 "en_US": "OpenAI-compatible text completion API provider for /completions endpoint",
-                "zh_Hans": "兼容 OpenAI 的文本补全 API 提供商，专用于 /completions 端点"
+                "zh_Hans": "兼容 OpenAI 的文本补全 API 提供商，专用于 /completions 端点",
             },
-            "icon_small": {
-                "en_US": "icon_s_en.svg"
-            },
-            "icon_large": {
-                "en_US": "icon_l_en.svg"
-            },
+            "icon_small": {"en_US": "icon_s_en.svg"},
+            "icon_large": {"en_US": "icon_l_en.svg"},
             "supported_model_types": ["llm"],
             "configurate_methods": ["customizable-model"],
             "provider_credential_schema": {
                 "credential_form_schemas": [
                     {
                         "variable": "api_key",
-                        "label": {
-                            "en_US": "API Key",
-                            "zh_Hans": "API 密钥"
-                        },
+                        "label": {"en_US": "API Key", "zh_Hans": "API 密钥"},
                         "type": "secret-input",
                         "required": True,
-                        "placeholder": {
-                            "en_US": "Enter your OpenAI API key",
-                            "zh_Hans": "输入您的 OpenAI API 密钥"
-                        }
+                        "placeholder": {"en_US": "Enter your OpenAI API key", "zh_Hans": "输入您的 OpenAI API 密钥"},
                     },
                     {
                         "variable": "endpoint_url",
-                        "label": {
-                            "en_US": "API Endpoint URL",
-                            "zh_Hans": "API 端点 URL"
-                        },
+                        "label": {"en_US": "API Endpoint URL", "zh_Hans": "API 端点 URL"},
                         "type": "text-input",
                         "required": True,
                         "default": "https://api.openai.com/v1",
-                        "placeholder": {
-                            "en_US": "Enter your API endpoint URL",
-                            "zh_Hans": "输入您的 API 端点 URL"
-                        }
+                        "placeholder": {"en_US": "Enter your API endpoint URL", "zh_Hans": "输入您的 API 端点 URL"},
                     },
                     {
                         "variable": "mode",
-                        "label": {
-                            "en_US": "API Mode",
-                            "zh_Hans": "API 模式"
-                        },
+                        "label": {"en_US": "API Mode", "zh_Hans": "API 模式"},
                         "type": "select",
                         "required": True,
                         "default": "completion",
@@ -101,148 +79,120 @@ class OpenAICompletionProvider:
                                 "value": "completion",
                                 "label": {
                                     "en_US": "Text Completions (/completions)",
-                                    "zh_Hans": "文本补全 (/completions)"
-                                }
+                                    "zh_Hans": "文本补全 (/completions)",
+                                },
                             }
-                        ]
-                    }
+                        ],
+                    },
                 ]
             },
             "model_credential_schema": {
                 "model": {
-                    "label": {
-                        "en_US": "Model Name",
-                        "zh_Hans": "模型名称"
-                    },
-                    "placeholder": {
-                        "en_US": "Enter your model name",
-                        "zh_Hans": "输入模型名称"
-                    }
+                    "label": {"en_US": "Model Name", "zh_Hans": "模型名称"},
+                    "placeholder": {"en_US": "Enter your model name", "zh_Hans": "输入模型名称"},
                 },
                 "credential_form_schemas": [
                     {
                         "variable": "context_size",
-                        "label": {
-                            "en_US": "Context Size",
-                            "zh_Hans": "上下文长度"
-                        },
+                        "label": {"en_US": "Context Size", "zh_Hans": "上下文长度"},
                         "type": "text-input",
                         "required": False,
                         "default": "4096",
                         "placeholder": {
                             "en_US": "Maximum context length for the model",
-                            "zh_Hans": "模型的最大上下文长度"
-                        }
+                            "zh_Hans": "模型的最大上下文长度",
+                        },
                     },
                     {
                         "variable": "max_tokens",
-                        "label": {
-                            "en_US": "Max Tokens",
-                            "zh_Hans": "最大输出长度"
-                        },
+                        "label": {"en_US": "Max Tokens", "zh_Hans": "最大输出长度"},
                         "type": "text-input",
                         "required": False,
                         "default": "2048",
                         "placeholder": {
                             "en_US": "Maximum number of tokens to generate",
-                            "zh_Hans": "生成的最大 token 数量"
-                        }
-                    }
-                ]
-            }
+                            "zh_Hans": "生成的最大 token 数量",
+                        },
+                    },
+                ],
+            },
         }
 
     def validate_provider_credentials(self, credentials: dict) -> None:
         """
         Validate provider credentials
-        
+
         Args:
             credentials: Provider credentials dictionary
-            
+
         Raises:
             CredentialsValidateFailedError: If credentials are invalid
         """
-        if not credentials.get('api_key'):
-            raise CredentialsValidateFailedError('API Key is required')
-        
-        if not credentials.get('endpoint_url'):
-            raise CredentialsValidateFailedError('API Endpoint URL is required')
-        
+        if not credentials.get("api_key"):
+            raise CredentialsValidateFailedError("API Key is required")
+
+        if not credentials.get("endpoint_url"):
+            raise CredentialsValidateFailedError("API Endpoint URL is required")
+
         # Ensure this provider is configured for completion mode
-        mode = credentials.get('mode', 'completion')
-        if mode != 'completion':
-            raise CredentialsValidateFailedError(
-                'This provider only supports completion mode (/completions endpoint)'
-            )
+        mode = credentials.get("mode", "completion")
+        if mode != "completion":
+            raise CredentialsValidateFailedError("This provider only supports completion mode (/completions endpoint)")
 
     def validate_model_credentials(self, model: str, credentials: dict) -> None:
         """
         Validate model-specific credentials
-        
+
         Args:
             model: Model name
             credentials: Model credentials dictionary
-            
+
         Raises:
             CredentialsValidateFailedError: If model credentials are invalid
         """
         if not model or not model.strip():
-            raise CredentialsValidateFailedError('Model name is required')
-        
+            raise CredentialsValidateFailedError("Model name is required")
+
         # Validate context size if provided
-        context_size = credentials.get('context_size')
+        context_size = credentials.get("context_size")
         if context_size:
             try:
                 context_size_int = int(context_size)
                 if context_size_int <= 0:
-                    raise CredentialsValidateFailedError(
-                        'Context size must be a positive integer'
-                    )
+                    raise CredentialsValidateFailedError("Context size must be a positive integer")
             except ValueError:
-                raise CredentialsValidateFailedError(
-                    'Context size must be a valid integer'
-                )
-        
+                raise CredentialsValidateFailedError("Context size must be a valid integer")
+
         # Validate max tokens if provided
-        max_tokens = credentials.get('max_tokens')
+        max_tokens = credentials.get("max_tokens")
         if max_tokens:
             try:
                 max_tokens_int = int(max_tokens)
                 if max_tokens_int <= 0:
-                    raise CredentialsValidateFailedError(
-                        'Max tokens must be a positive integer'
-                    )
+                    raise CredentialsValidateFailedError("Max tokens must be a positive integer")
             except ValueError:
-                raise CredentialsValidateFailedError(
-                    'Max tokens must be a valid integer'
-                )
+                raise CredentialsValidateFailedError("Max tokens must be a valid integer")
 
     def get_supported_features(self) -> list[str]:
         """
         Get list of supported features for this provider
-        
+
         Returns:
             List of supported feature names
         """
-        return [
-            'text_completion',
-            'streaming',
-            'prompt_completion',
-            'single_turn',
-            'basic_parameters'
-        ]
+        return ["text_completion", "streaming", "prompt_completion", "single_turn", "basic_parameters"]
 
     def get_api_endpoint(self, base_url: str) -> str:
         """
         Get the specific API endpoint for this provider
-        
+
         Args:
             base_url: Base API URL
-            
+
         Returns:
             Complete endpoint URL for text completions
         """
-        base_url = base_url.rstrip('/')
+        base_url = base_url.rstrip("/")
         return f"{base_url}/completions"
 
     def __str__(self) -> str:

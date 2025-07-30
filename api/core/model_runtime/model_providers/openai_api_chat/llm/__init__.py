@@ -1,3 +1,3 @@
 from .llm import OpenAIChatLargeLanguageModel
 
-__all__ = ['OpenAIChatLargeLanguageModel']
+__all__ = ["OpenAIChatLargeLanguageModel"]
