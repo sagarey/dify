@@ -126,7 +126,11 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
         except Exception as e:
             logger.error("Failed to get token count via routed provider: %s", e)
             # Return a reasonable default if routing fails
-            return sum(len(message.content) // 4 for message in prompt_messages if hasattr(message, 'content'))
+            total_tokens = 0
+            for message in prompt_messages:
+                if hasattr(message, 'content') and message.content:
+                    total_tokens += len(str(message.content)) // 4
+            return total_tokens
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """

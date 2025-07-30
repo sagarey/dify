@@ -15,7 +15,9 @@ import logging
 import warnings
 
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import ConfigurateMethod
+from core.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 
 logger = logging.getLogger(__name__)
