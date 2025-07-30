@@ -36,9 +36,10 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
             from core.model_runtime.model_providers.openai_api_chat.llm.llm import (
                 OpenAIChatLargeLanguageModel,
             )
+
             return OpenAIChatLargeLanguageModel()
         except ImportError as e:
-            logger.error("Failed to import OpenAIChatLargeLanguageModel: %s", e)
+            logger.exception("Failed to import OpenAIChatLargeLanguageModel")
             raise InvokeError("Chat provider not available") from e
 
     def _get_completion_llm(self):
@@ -47,9 +48,10 @@ class OpenAICompatibleLargeLanguageModel(LargeLanguageModel):
             from core.model_runtime.model_providers.openai_api_completion.llm.llm import (
                 OpenAICompletionLargeLanguageModel,
             )
+
             return OpenAICompletionLargeLanguageModel()
         except ImportError as e:
-            logger.error("Failed to import OpenAICompletionLargeLanguageModel: %s", e)
+            logger.exception("Failed to import OpenAICompletionLargeLanguageModel")
             raise InvokeError("Completion provider not available") from e
 
     def _invoke(
