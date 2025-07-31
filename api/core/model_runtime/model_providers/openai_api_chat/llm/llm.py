@@ -79,6 +79,8 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
         if credentials.get("mode", "chat") != "chat":
             raise CredentialsValidateFailedError("This provider only supports chat mode")
 
+        logger.debug("Invoking OpenAI API Chat model: %s, stream: %s", model, stream)
+
         return self._chat_completion_request(
             model=model,
             credentials=credentials,
@@ -516,8 +518,9 @@ class OpenAIChatLargeLanguageModel(LargeLanguageModel):
         try:
             error_data = response.json()
             error_message = error_data.get("error", {}).get("message", f"HTTP {response.status_code}")
-        except:
-            error_message = f"HTTP {response.status_code}"
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            logger.warning("Failed to parse error response JSON: %s", e)
+            error_message = f"HTTP {response.status_code}: {response.text[:200]}"
 
         if response.status_code == 401:
             raise InvokeAuthorizationError(error_message)

@@ -80,6 +80,8 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
         if tools:
             logger.warning("Tools/function calling is not supported in completion mode, ignoring")
 
+        logger.debug("Invoking OpenAI API Completion model: %s, stream: %s", model, stream)
+
         return self._text_completion_request(
             model=model,
             credentials=credentials,
@@ -411,8 +413,9 @@ class OpenAICompletionLargeLanguageModel(LargeLanguageModel):
         try:
             error_data = response.json()
             error_message = error_data.get("error", {}).get("message", f"HTTP {response.status_code}")
-        except:
-            error_message = f"HTTP {response.status_code}"
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            logger.warning("Failed to parse error response JSON: %s", e)
+            error_message = f"HTTP {response.status_code}: {response.text[:200]}"
 
         if response.status_code == 401:
             raise InvokeAuthorizationError(error_message)

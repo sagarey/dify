@@ -123,54 +123,70 @@ class OpenAICompletionProvider:
         Validate provider credentials
 
         Args:
-            credentials: Provider credentials dictionary
+            credentials: Provider credentials
 
         Raises:
             CredentialsValidateFailedError: If credentials are invalid
         """
-        if not credentials.get("api_key"):
-            raise CredentialsValidateFailedError("API Key is required")
+        if not credentials:
+            raise CredentialsValidateFailedError("Credentials cannot be empty")
 
-        if not credentials.get("endpoint_url"):
-            raise CredentialsValidateFailedError("API Endpoint URL is required")
+        # Validate required fields
+        required_fields = ["api_key", "endpoint_url"]
+        for field in required_fields:
+            if field not in credentials:
+                raise CredentialsValidateFailedError(f"Missing required field: {field}")
 
-        # Ensure this provider is configured for completion mode
+        # Validate API key format (basic check)
+        api_key = credentials.get("api_key", "")
+        if not isinstance(api_key, str) or not api_key.strip():
+            raise CredentialsValidateFailedError("API key must be a non-empty string")
+
+        # Validate endpoint URL format
+        endpoint_url = credentials.get("endpoint_url", "")
+        if not isinstance(endpoint_url, str) or not endpoint_url.startswith(("http://", "https://")):
+            raise CredentialsValidateFailedError("Endpoint URL must be a valid HTTP/HTTPS URL")
+
+        # Validate mode
         mode = credentials.get("mode", "completion")
         if mode != "completion":
-            raise CredentialsValidateFailedError("This provider only supports completion mode (/completions endpoint)")
+            raise CredentialsValidateFailedError("This provider only supports 'completion' mode")
 
     def validate_model_credentials(self, model: str, credentials: dict) -> None:
         """
-        Validate model-specific credentials
+        Validate model credentials
 
         Args:
             model: Model name
-            credentials: Model credentials dictionary
+            credentials: Model credentials
 
         Raises:
-            CredentialsValidateFailedError: If model credentials are invalid
+            CredentialsValidateFailedError: If credentials are invalid
         """
-        if not model or not model.strip():
-            raise CredentialsValidateFailedError("Model name is required")
+        if not model or not isinstance(model, str):
+            raise CredentialsValidateFailedError("Model name must be a non-empty string")
 
-        # Validate context size if provided
+        if not credentials:
+            raise CredentialsValidateFailedError("Model credentials cannot be empty")
+
+        # Validate context_size if provided
         context_size = credentials.get("context_size")
-        if context_size:
+        if context_size is not None:
             try:
                 context_size_int = int(context_size)
-                if context_size_int <= 0:
-                    raise CredentialsValidateFailedError("Context size must be a positive integer")
-            except ValueError:
+                if context_size_int <= 0 or context_size_int > 1000000:  # Reasonable upper limit
+                    raise CredentialsValidateFailedError("Context size must be between 1 and 1,000,000")
+            except (ValueError, TypeError):
                 raise CredentialsValidateFailedError("Context size must be a valid integer")
 
-        # Validate max tokens if provided
+        # Validate max_tokens if provided
         max_tokens = credentials.get("max_tokens")
-        if max_tokens:
+        if max_tokens is not None:
             try:
                 max_tokens_int = int(max_tokens)
-                if max_tokens_int <= 0:
-                    raise CredentialsValidateFailedError("Max tokens must be a positive integer")
-            except ValueError:
+                if max_tokens_int <= 0 or max_tokens_int > 100000:  # Reasonable upper limit
+                    raise CredentialsValidateFailedError("Max tokens must be between 1 and 100,000")
+            except (ValueError, TypeError):
                 raise CredentialsValidateFailedError("Max tokens must be a valid integer")
 
     def get_supported_features(self) -> list[str]:
