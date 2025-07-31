@@ -133,33 +133,33 @@ class TestKimiLargeLanguageModel(unittest.TestCase):
     def test_llm_initialization(self):
         """Test LLM initialization"""
         # We're testing the class can be created, but not fully instantiated
-        assert hasattr(KimiLargeLanguageModel, '_invoke')
+        assert hasattr(KimiLargeLanguageModel, "_invoke")
 
     def test_invoke_success(self):
         """Test successful invocation"""
         # Test that the method exists
-        assert hasattr(KimiLargeLanguageModel, '_invoke')
+        assert hasattr(KimiLargeLanguageModel, "_invoke")
 
     def test_get_num_tokens(self):
         """Test token counting"""
         # Test that the method exists
-        assert hasattr(KimiLargeLanguageModel, 'get_num_tokens')
+        assert hasattr(KimiLargeLanguageModel, "get_num_tokens")
 
     def test_validate_credentials_success(self):
         """Test successful credential validation"""
         # Test that the method exists
-        assert hasattr(KimiLargeLanguageModel, 'validate_credentials')
+        assert hasattr(KimiLargeLanguageModel, "validate_credentials")
 
     def test_validate_credentials_failure(self):
         """Test credential validation failure"""
         # Test that the method exists
-        assert hasattr(KimiLargeLanguageModel, 'validate_credentials')
+        assert hasattr(KimiLargeLanguageModel, "validate_credentials")
 
     def test_convert_messages_to_openai_format(self):
         """Test message conversion"""
         # Test that the method exists
-        assert hasattr(KimiLargeLanguageModel, '_convert_messages_to_openai_format')
+        assert hasattr(KimiLargeLanguageModel, "_convert_messages_to_openai_format")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
