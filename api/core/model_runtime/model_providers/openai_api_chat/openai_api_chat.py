@@ -134,7 +134,7 @@ class OpenAIChatProvider:
         # Validate required fields
         required_fields = ["api_key", "endpoint_url"]
         for field in required_fields:
-            if not credentials.get(field):
+            if field not in credentials:
                 raise CredentialsValidateFailedError(f"Missing required field: {field}")
 
         # Validate API key format (basic check)
