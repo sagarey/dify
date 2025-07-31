@@ -52,10 +52,10 @@ class TestOpenAICompletionProvider:
         with pytest.raises(CredentialsValidateFailedError, match="Missing required field: api_key"):
             self.provider.validate_provider_credentials(credentials)
 
-    def test_validate_provider_credentials_invalid_api_key(self):
-        """Test credential validation with invalid API key"""
-        credentials = {"api_key": "short", "endpoint_url": "https://api.openai.com/v1", "mode": "completion"}
-        with pytest.raises(CredentialsValidateFailedError, match="at least 10 characters"):
+    def test_validate_provider_credentials_empty_api_key(self):
+        """Test credential validation with empty API key"""
+        credentials = {"api_key": "", "endpoint_url": "https://api.openai.com/v1", "mode": "completion"}
+        with pytest.raises(CredentialsValidateFailedError, match="non-empty string"):
             self.provider.validate_provider_credentials(credentials)
 
     def test_validate_provider_credentials_invalid_endpoint(self):

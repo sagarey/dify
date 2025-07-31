@@ -139,8 +139,8 @@ class OpenAIChatProvider:
 
         # Validate API key format (basic check)
         api_key = credentials.get("api_key", "")
-        if not isinstance(api_key, str) or len(api_key.strip()) < 10:
-            raise CredentialsValidateFailedError("API key must be a non-empty string with at least 10 characters")
+        if not isinstance(api_key, str) or not api_key.strip():
+            raise CredentialsValidateFailedError("API key must be a non-empty string")
 
         # Validate endpoint URL format
         endpoint_url = credentials.get("endpoint_url", "")
